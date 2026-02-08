@@ -1,14 +1,4 @@
 local _util = {}
-_util.in_range = function(v, a, b)
-    if (v == nil or a == nil or b == nil) then
-        return nil
-    end
-    v = tonumber(v)
-    a = tonumber(a)
-    b = tonumber(b)
-    return (v >= a and v <= b)
-end
-
 _util.init_table = function(keys, vals)
     local t = {}
     t.keys = {}
@@ -30,12 +20,34 @@ _util.init_table = function(keys, vals)
     return t
 end
 
+_util.in_range = function(v, a, b)
+    if (v == nil or a == nil or b == nil) then
+        return nil
+    end
+    v = tonumber(v)
+    a = tonumber(a)
+    b = tonumber(b)
+    return (v >= a and v <= b)
+end
+
+_util.vlen3 = function(x, y, z)
+    x = tonumber(x)
+    y = tonumber(y)
+    z = tonumber(z)
+    return math.sqrt(x^2 + y^2 + z^2)
+end
+
+_util.vlen2 = function(x, y)
+    return _util.vlen3(x, y, 0)
+end
+
 local _g = {}
 _g.gui = gui
 _g.callbacks = callbacks
 _g.client = client
 _g.entities = entities
 _g.input = input
+_g.draw = draw
 
 local _jbt = {}
 _jbt.standard = 1
@@ -50,6 +62,9 @@ _tab.movement = _g.gui.Tab(_ref.settings, "settings.movement", "Movement")
 
 local _ui = {}
 _ui.jbt = _util.init_table({"Standard", "Improved"}, {_jbt.standard, _jbt.improved})
+
+_ui.debug_checkbox = _g.gui.Checkbox(_tab.movement, "debug.checkbox", "Debug", false)
+_ui.debug_checkbox:SetDescription("Show a debug text on the screen.")
 
 _ui.spread_checkbox = _g.gui.Checkbox(_tab.movement, "spread.show.checkbox", "Spread", true)
 _ui.spread_checkbox:SetDescription("Show weapon spread using the `weapon_debug_spread_show` console variable.")
@@ -125,6 +140,10 @@ _def.bw_alias = "-back"
 _def.rt_alias = "-moveright"
 _def.lt_alias = "-moveleft"
 
+local _dbg = {}
+_dbg.font = _g.draw.CreateFont("Consolas", 20, 900)
+_dbg.color = {0, 255, 0, 255}
+
 local _cv = {}
 _cv.spread = "weapon_debug_spread_show"
 _cv.cross_style = "cl_crosshairstyle"
@@ -135,6 +154,9 @@ _prop.obs_target = "m_hObserverTarget"
 _prop.scope = "m_bIsScoped"
 _prop.flags = "m_fFlags"
 _prop.render_mode = "m_nRenderMode"
+_prop.vel_x = "m_vecVelocity[0]"
+_prop.vel_y = "m_vecVelocity[1]"
+_prop.vel_z = "m_vecVelocity[2]"
 
 local _render = {}
 _render.ladder = 2304
@@ -149,6 +171,7 @@ _button.in_duck = 4
 local _call = {}
 _call.move = "CreateMove"
 _call.pre_move = "PreMove"
+_call.draw = "Draw"
 _call.unload = "Unload"
 
 local _client = {}
@@ -157,12 +180,15 @@ _client.plr = nil
 _client.trg = nil
 
 local _context = {}
+_context.screen_w = nil
+_context.screen_h = nil
 _context.jb_button = 0
 _context.pre_flags = nil
 _context.pground = 0
 _context.cground = 0
 _context.pladder = 0
 _context.cladder = 0
+_context.speed = nil
 
 _g.callbacks.Register(_call.move, function(cmd)
     _client.lcl = _g.entities.GetLocalPlayer()
@@ -324,11 +350,41 @@ _g.callbacks.Register(_call.move, function(cmd)
             _g.gui.SetValue(_var.jb, _context.jb_button)
         end
     end
+
+    if (_client.plr and _client.plr:IsAlive()) then
+        local vel_x = _client.plr:GetPropFloat("localdata", _prop.vel_x)
+        if (vel_x == nil) then
+            vel_x = 0
+        end
+        local vel_y = _client.plr:GetPropFloat("localdata", _prop.vel_y)
+        if (vel_y == nil) then
+            vel_y = 0
+        end
+        _context.speed = _util.vlen2(vel_x, vel_y)
+    end
 end)
 
 _g.callbacks.Register(_call.pre_move, function()
     if (_client.lcl and _client.lcl:IsAlive()) then
         _context.pre_flags = _client.lcl:GetPropInt(_prop.flags)
+    end
+end)
+
+_g.callbacks.Register(_call.draw, function()
+    _context.screen_w, _context.screen_h = _g.draw.GetScreenSize()
+
+    if (_ui.debug_checkbox:GetValue() and _context.screen_w ~= nil and _context.screen_h ~= nil and _context.speed ~= nil) then
+        _g.draw.SetFont(_dbg.font)
+
+        local text = string.format("%03.0f", _context.speed)
+        local text_w, text_h = _g.draw.GetTextSize(text)
+        local text_x, text_y = _context.screen_w * 0.5 - text_w / 2, _context.screen_h * 0.6 - text_h / 2
+
+        _g.draw.Color(0, 0, 0, 255)
+        _g.draw.Text(text_x + 1, text_y + 1, text)
+
+        _g.draw.Color(unpack(_dbg.color))
+        _g.draw.Text(text_x, text_y, text)
     end
 end)
 
