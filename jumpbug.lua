@@ -1,6 +1,7 @@
 local _g = {}
 _g.gui = gui
 _g.callbacks = callbacks
+_g.entities = entities
 _g.input = input
 
 local _util = {}
@@ -39,7 +40,7 @@ _tab.jb = _g.gui.Tab(_ref.settings, "settings.jb", "Jump-Bug")
 local _ui = {}
 _ui.jbt = _util.init_table({"Standard", "Improved"}, {_jbt.standard, _jbt.improved})
 
-_ui.jb_checkbox = _g.gui.Checkbox(_tab.jb, "enable.checkbox", "Enable", true)
+_ui.jb_checkbox = _g.gui.Checkbox(_tab.jb, "enable.checkbox", "Eanble", true)
 _ui.jb_checkbox:SetDescription("Disable the auto jump-bug on the ground and enable it in the air.")
 
 _ui.jb_auto_jump_checkbox = _g.gui.Checkbox(_tab.jb, "auto_jump.checkbox", "Auto Jump", true)
