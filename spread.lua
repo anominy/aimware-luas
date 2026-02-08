@@ -53,32 +53,32 @@ _util.in_range = function(v, a, b)
 end
 
 _g.callbacks.Register(_call.move, function()
-        _client.lcl = _g.entities.GetLocalPlayer()
-        if (_client.lcl) then
-            if (_client.lcl:IsAlive()) then
-                _client.plr = _client.lcl
-                _client.trg = nil
-            else
-                _client.trg = _client.lcl:GetPropEntity(_prop.obs_target)
-                _client.plr = _client.trg
-            end
-        else
-            _client.plr = nil
+    _client.lcl = _g.entities.GetLocalPlayer()
+    if (_client.lcl) then
+        if (_client.lcl:IsAlive()) then
+            _client.plr = _client.lcl
             _client.trg = nil
+        else
+            _client.trg = _client.lcl:GetPropEntity(_prop.obs_target)
+            _client.plr = _client.trg
         end
+    else
+        _client.plr = nil
+        _client.trg = nil
+    end
 
-        if (_ui.spread_checkbox:GetValue() and _client.plr) then
-            local scope = _client.plr:GetPropBool(_prop.scope)
-            if ((not _ui.spread_hide_checkbox:GetValue() or (scope ~= nil and not scope)) and (_util.in_range(_g.client.GetConVar(_cv.cross_style), 2, 3) and (_client.lcl and _client.lcl:IsAlive()))) then
-                local inncauracy = _client.plr:GetWeaponInaccuracy()
-                local is_eanbled = (inncauracy ~= nil and inncauracy or 0) > _ui.spread_start_slider:GetValue()
-                _g.client.SetConVar(_cv.spread, is_eanbled and 1 or _def.spread, true)
-            else
-                _g.client.SetConVar(_cv.spread, (scope ~= nil and scope) and _def.spread or 2, true)
-            end
-        elseif (tonumber(_g.client.GetConVar(_cv.spread)) ~= _def.spread) then
-            _g.client.SetConVar(_cv.spread, _def.spread, true)
+    if (_ui.spread_checkbox:GetValue() and _client.plr) then
+        local scope = _client.plr:GetPropBool(_prop.scope)
+        if ((not _ui.spread_hide_checkbox:GetValue() or (scope ~= nil and not scope)) and (_util.in_range(_g.client.GetConVar(_cv.cross_style), 2, 3) and (_client.lcl and _client.lcl:IsAlive()))) then
+            local inncauracy = _client.plr:GetWeaponInaccuracy()
+            local is_eanbled = (inncauracy ~= nil and inncauracy or 0) > _ui.spread_start_slider:GetValue()
+            _g.client.SetConVar(_cv.spread, is_eanbled and 1 or _def.spread, true)
+        else
+            _g.client.SetConVar(_cv.spread, (scope ~= nil and scope) and _def.spread or 2, true)
         end
+    elseif (tonumber(_g.client.GetConVar(_cv.spread)) ~= _def.spread) then
+        _g.client.SetConVar(_cv.spread, _def.spread, true)
+    end
 end)
 
 _g.callbacks.Register(_call.unload, function()
