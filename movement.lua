@@ -64,7 +64,13 @@ local _ui = {}
 _ui.jbt = _util.init_table({"Standard", "Improved"}, {_jbt.standard, _jbt.improved})
 
 _ui.debug_checkbox = _g.gui.Checkbox(_tab.movement, "debug.checkbox", "Debug", false)
-_ui.debug_checkbox:SetDescription("Show a debug text on the screen.")
+_ui.debug_checkbox:SetDescription("Show debug text on the screen.")
+
+_ui.debug_specs_checkbox = _g.gui.Checkbox(_tab.movement, "debug.specs.checkbox", "Debug Spectators", false)
+_ui.debug_specs_checkbox:SetDescription("Show list of spectators on the left top corner of the screen.")
+
+_ui.debug_specs_self_checkbox = _g.gui.Checkbox(_tab.movement, "debug.specs.self.checkbox", "Debug Spectators Self", false)
+_ui.debug_specs_self_checkbox:SetDescription("Show yourself on the list of spectators on the left top corner of the screen.")
 
 _ui.spread_checkbox = _g.gui.Checkbox(_tab.movement, "spread.show.checkbox", "Spread", true)
 _ui.spread_checkbox:SetDescription("Show weapon spread using the `weapon_debug_spread_show` console variable.")
@@ -129,6 +135,9 @@ _ui.laj_alias_fw_editbox:SetDescription("Set custom forawrd alias that will be e
 _ui.laj_alias_bw_editbox = _g.gui.Editbox(_tab.movement, "laj.alias.bw.editbox", "Ladder Jump Back Alias")
 _ui.laj_alias_bw_editbox:SetDescription("Set custom back alias that will be executed at statrt of a ladder jump.")
 
+local _class = {}
+_class.player = "CCSPlayer"
+
 local _var = {}
 _var.jb = "misc.autojumpbug"
 
@@ -189,6 +198,7 @@ _context.cground = 0
 _context.pladder = 0
 _context.cladder = 0
 _context.speed = nil
+_context.spectators = nil
 
 _g.callbacks.Register(_call.move, function(cmd)
     _client.lcl = _g.entities.GetLocalPlayer()
@@ -205,8 +215,8 @@ _g.callbacks.Register(_call.move, function(cmd)
         _client.trg = nil
     end
 
-    if (_client.lcl and _client.lcl:IsAlive()) then
-        local flags = _client.lcl:GetPropInt(_prop.flags)
+    if (_client.plr and _client.plr:IsAlive()) then
+        local flags = _client.plr:GetPropInt(_prop.flags)
         _context.pground = _context.cground
         if (flags ~= nil) then
             if (bit.band(flags, _flag.on_ground) == _flag.on_ground) then
@@ -224,7 +234,7 @@ _g.callbacks.Register(_call.move, function(cmd)
             _context.cground = 0
         end
 
-        local render_mode = _client.lcl:GetPropInt(_prop.render_mode)
+        local render_mode = _client.plr:GetPropInt(_prop.render_mode)
         _context.pladder = _context.cladder
         if (render_mode ~= nil) then
             if (render_mode == _render.ladder) then
@@ -361,6 +371,23 @@ _g.callbacks.Register(_call.move, function(cmd)
             vel_y = 0
         end
         _context.speed = _util.vlen2(vel_x, vel_y)
+
+        _context.spectators = {}
+        for _, entity in pairs(_g.entities.FindByClass(_class.player)) do
+            local entity_index = entity:GetIndex()
+            if (not entity:IsAlive() and (_ui.debug_specs_self_checkbox:GetValue() or entity_index ~= _client.lcl:GetIndex())) then
+                local target = entity:GetPropEntity(_prop.obs_target)
+                if (target) then
+                    local target_index = target:GetIndex()
+                    if (_client.plr:GetIndex() == target_index) then
+                        local info = _g.client.GetPlayerInfo(target_index)
+                        if (not info.IsBot and not info.IsGOTV) then
+                            table.insert(_context.spectators, entity)
+                        end
+                    end
+                end
+            end
+        end
     end
 end)
 
@@ -385,6 +412,23 @@ _g.callbacks.Register(_call.draw, function()
 
         _g.draw.Color(unpack(_dbg.color))
         _g.draw.Text(text_x, text_y, text)
+
+        if (_ui.debug_specs_checkbox:GetValue() and _context.spectators ~= nil) then
+            local space_w, space_h = _g.draw.GetTextSize(" ")
+            local curr_x, curr_y = space_w, space_h
+            for _, entity in ipairs(_context.spectators) do
+                local text = entity:GetName()
+
+                _g.draw.Color(0, 0, 0, 255)
+                _g.draw.Text(curr_x + 1, curr_y + 1, text)
+
+                _g.draw.Color(unpack(_dbg.color))
+                _g.draw.Text(curr_x, curr_y, text)
+
+                local text_w, text_h = _g.draw.GetTextSize(text)
+                curr_y = curr_y + text_h + space_h
+            end
+        end
     end
 end)
 
