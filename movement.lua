@@ -33,6 +33,12 @@ _ui.spread_hide_checkbox:SetDescription("Hide weapon spread while scroping using
 _ui.spread_start_slider = _g.gui.Slider(_tab.movement, "spread.start.slider", "Spread Start", 0.01, 0, 1, 0.005)
 _ui.spread_start_slider:SetDescription("Innacuracy value of current weapon from which to start showing the weapon spread.")
 
+_ui.sway_checkbox = _g.gui.Checkbox(_tab.movement, "sway.checkbox", "Sway", false)
+_ui.sway_checkbox:SetDescription("Override the `cl_wpn_sway_scale` console variable.")
+
+_ui.sway_scale_slider = _g.gui.Slider(_tab.movement, "sway.scale.slider", "Sway Scale", 0, 0, 1.6, 0.01)
+_ui.sway_scale_slider:SetDescription("Set value of the `cl_wpn_sway_scale` console variable.")
+
 _ui.lj_checkbox = _g.gui.Checkbox(_tab.movement, "lj.checkbox", "Long Jump", true)
 _ui.lj_checkbox:SetDescription("Release +forward or +back or +moveright or +moveleft at start of a long jump.")
 
@@ -71,6 +77,7 @@ _ui.laj_alias_bw_editbox:SetDescription("Set custom back alias that will be exec
 
 local _def = {}
 _def.spread = 0
+_def.sway = 1.6
 _def.fw_alias = "-forward"
 _def.bw_alias = "-back"
 _def.rt_alias = "-moveright"
@@ -79,6 +86,7 @@ _def.lt_alias = "-moveleft"
 local _cv = {}
 _cv.spread = "weapon_debug_spread_show"
 _cv.cross_style = "cl_crosshairstyle"
+_cv.sway = "cl_wpn_sway_scale"
 
 local _prop = {}
 _prop.obs_target = "m_hObserverTarget"
@@ -176,6 +184,12 @@ _g.callbacks.Register(_call.move, function(cmd)
         _g.client.SetConVar(_cv.spread, _def.spread, true)
     end
 
+    if (_ui.sway_checkbox:GetValue()) then
+        _g.client.SetConVar(_cv.sway, _ui.sway_scale_slider:GetValue(), true)
+    elseif (tonumber(_g.client.GetConVar(_cv.sway)) ~= _def.sway) then
+        _g.client.SetConVar(_cv.sway, _def.sway, true)
+    end
+
     if (_client.lcl and _client.lcl:IsAlive()) then
         if (bit.band(cmd.buttons, _button.in_jump) == _button.in_jump) then
             if (_context.cground == -1 and (_ui.lj_checkbox:GetValue() and _g.input.GetMouseWheelDelta() == 0 and _context.pground > _ui.lj_ticks_slider:GetValue() or _ui.lj_scroll_checkbox:GetValue() and _g.input.GetMouseWheelDelta() ~= 0 and _context.pground >= _ui.lj_scroll_ticks_slider:GetValue())) then
@@ -232,4 +246,5 @@ end)
 
 _g.callbacks.Register(_call.unload, function()
     _g.client.SetConVar(_cv.spread, _def.spread, true)
+    _g.client.SetConVar(_cv.sway, _def.sway, true)
 end)
