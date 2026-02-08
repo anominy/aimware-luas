@@ -35,7 +35,7 @@ _ref.menu = _g.gui.Reference("Menu")
 _ref.settings = _g.gui.Reference("Settings")
 
 local _tab = {}
-_tab.jb = _g.gui.Tab(_ref.settings, "settings.jb", "Jump-Bug")
+_tab.jb = _g.gui.Tab(_ref.settings, "settings.jb", "JumpBug")
 
 local _ui = {}
 _ui.jbt = _util.init_table({"Standard", "Improved"}, {_jbt.standard, _jbt.improved})
