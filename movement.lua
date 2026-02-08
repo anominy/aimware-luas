@@ -402,7 +402,7 @@ end)
 _g.callbacks.Register(_call.draw, function()
     _context.screen_w, _context.screen_h = _g.draw.GetScreenSize()
 
-    if (_g.engine.GetServerIP() == nil) then
+    if (_g.engine.GetServerIP() == nil or _g.engine.GetMapName() == nil) then
         return
     end
 
