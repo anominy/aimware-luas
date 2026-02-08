@@ -1,5 +1,4 @@
 local _g = {}
-_g.gui = gui
 _g.callbacks = callbacks
 _g.client = client
 
@@ -20,5 +19,5 @@ _g.callbacks.Register(_call.move, function()
 end)
 
 _g.callbacks.Register(_call.unload, function()
-    _g.client.SetConVar(_cv.blur, 0, true)
+    _g.client.SetConVar(_cv.blur, _def.blur, true)
 end)
