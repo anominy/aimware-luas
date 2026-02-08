@@ -9,12 +9,37 @@ _util.in_range = function(v, a, b)
     return (v >= a and v <= b)
 end
 
+_util.init_table = function(keys, vals)
+    local t = {}
+    t.keys = {}
+    t.vals = {}
+    if (keys == nil or #keys <= 0) then
+        return t
+    end
+    local idx = 1
+    for i = 1, #keys do
+        local key = keys[i]
+        if (key ~= nil) then
+            local val = vals ~= nil and vals[i] or nil
+            t.keys[idx] = key
+            t.vals[idx] = val
+            t[key] = val
+            idx = idx + 1
+        end
+    end
+    return t
+end
+
 local _g = {}
 _g.gui = gui
 _g.callbacks = callbacks
 _g.client = client
 _g.entities = entities
 _g.input = input
+
+local _jbt = {}
+_jbt.standard = 1
+_jbt.improved = 2
 
 local _ref = {}
 _ref.menu = _g.gui.Reference("Menu")
@@ -24,6 +49,8 @@ local _tab = {}
 _tab.movement = _g.gui.Tab(_ref.settings, "settings.movement", "Movement")
 
 local _ui = {}
+_ui.jbt = _util.init_table({"Standard", "Improved"}, {_jbt.standard, _jbt.improved})
+
 _ui.spread_checkbox = _g.gui.Checkbox(_tab.movement, "spread.show.checkbox", "Spread", true)
 _ui.spread_checkbox:SetDescription("Show weapon spread using the `weapon_debug_spread_show` console variable.")
 
@@ -38,6 +65,18 @@ _ui.sway_checkbox:SetDescription("Override the `cl_wpn_sway_scale` console varia
 
 _ui.sway_scale_slider = _g.gui.Slider(_tab.movement, "sway.scale.slider", "Sway Scale", 0, 0, 1.6, 0.01)
 _ui.sway_scale_slider:SetDescription("Set value of the `cl_wpn_sway_scale` console variable.")
+
+_ui.jb_checkbox = _g.gui.Checkbox(_tab.movement, "jb.checkbox", "Jump-Bug", true)
+_ui.jb_checkbox:SetDescription("Disable the auto jump-bug on the ground and enable it in the air.")
+
+_ui.jb_auto_jump_checkbox = _g.gui.Checkbox(_tab.movement, "jb.autojump.checkbox", "Jump-Bug Auto Jump", true)
+_ui.jb_auto_jump_checkbox:SetDescription("Switch the jump-bug's auto jump, if disabled, it will supress the auto jump after a failed jump-bug.")
+
+_ui.jb_type_combobox = _g.gui.Combobox(_tab.movement, "jb.type.combobox", "Jump-Bug Type", unpack(_ui.jbt.keys))
+_ui.jb_type_combobox:SetDescription("Switch an implementation of the auto jump-bug feature.")
+
+_ui.jb_lag_checkbox = _g.gui.Checkbox(_tab.movement, "jb.lag.checkbox", "Jump-Bug Ladder Glide", true)
+_ui.jb_lag_checkbox:SetDescription("Set in-jump button when holding the jump-bug key while ladder moving.")
 
 _ui.lj_checkbox = _g.gui.Checkbox(_tab.movement, "lj.checkbox", "Long Jump", true)
 _ui.lj_checkbox:SetDescription("Release +forward or +back or +moveright or +moveleft at start of a long jump.")
@@ -75,6 +114,9 @@ _ui.laj_alias_fw_editbox:SetDescription("Set custom forawrd alias that will be e
 _ui.laj_alias_bw_editbox = _g.gui.Editbox(_tab.movement, "laj.alias.bw.editbox", "Ladder Jump Back Alias")
 _ui.laj_alias_bw_editbox:SetDescription("Set custom back alias that will be executed at statrt of a ladder jump.")
 
+local _var = {}
+_var.jb = "misc.autojumpbug"
+
 local _def = {}
 _def.spread = 0
 _def.sway = 1.6
@@ -102,9 +144,11 @@ _flag.on_ground = 1
 
 local _button = {}
 _button.in_jump = 2
+_button.in_duck = 4
 
 local _call = {}
 _call.move = "CreateMove"
+_call.pre_move = "PreMove"
 _call.unload = "Unload"
 
 local _client = {}
@@ -113,6 +157,8 @@ _client.plr = nil
 _client.trg = nil
 
 local _context = {}
+_context.jb_button = 0
+_context.pre_flags = nil
 _context.pground = 0
 _context.cground = 0
 _context.pladder = 0
@@ -241,6 +287,48 @@ _g.callbacks.Register(_call.move, function(cmd)
                 end
             end
         end
+    end
+
+    if (_ui.jb_checkbox:GetValue()) then
+        local jb_button = _g.gui.GetValue(_var.jb)
+        if (not _ref.menu:IsActive()) then
+            if (_client.lcl and _client.lcl:IsAlive()) then
+                local jb_type = _ui.jbt[_ui.jbt.keys[_ui.jb_type_combobox:GetValue() + 1]]
+                if (jb_type == _jbt.standard) then
+                    if (_context.cground > (_ui.jb_auto_jump_checkbox:GetValue() and 1 or 0) or _context.cladder > 0) then
+                        if (jb_button ~= 0) then
+                            _context.jb_button = jb_button
+                            _g.gui.SetValue(_var.jb, 0)
+                        end
+                    elseif (_context.jb_button ~= 0) then
+                        _g.gui.SetValue(_var.jb, _context.jb_button)
+                    end
+                elseif (jb_type == _jbt.improved) then
+                    if (jb_button ~= 0) then
+                        _context.jb_button = jb_button
+                        _g.gui.SetValue(_var.jb, 0)
+                    end
+                    if (_g.input.IsButtonDown(_context.jb_button)) then
+                        if ((_context.pre_flags ~= nil and bit.band(_context.pre_flags, _flag.on_ground) ~= _flag.on_ground) and _context.cground > 0) then
+                            cmd.buttons = bit.bor(cmd.buttons, _button.in_duck)
+                        end
+                    end
+                end
+                if (_ui.jb_lag_checkbox:GetValue() and _context.cladder > 0 and _context.jb_button ~= 0 and _g.input.IsButtonDown(_context.jb_button)) then
+                    cmd.buttons = bit.bor(cmd.buttons, _button.in_jump)
+                end
+            elseif (jb_button == 0 and _context.jb_button ~= 0) then
+                _g.gui.SetValue(_var.jb, _context.jb_button)
+            end
+        elseif (jb_button == 0 and _context.jb_button ~= 0) then
+            _g.gui.SetValue(_var.jb, _context.jb_button)
+        end
+    end
+end)
+
+_g.callbacks.Register(_call.pre_move, function()
+    if (_client.lcl and _client.lcl:IsAlive()) then
+        _context.pre_flags = _client.lcl:GetPropInt(_prop.flags)
     end
 end)
 
