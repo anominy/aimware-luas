@@ -1,3 +1,12 @@
+local _g = {}
+_g.gui = gui
+_g.callbacks = callbacks
+_g.client = client
+_g.entities = entities
+_g.input = input
+_g.draw = draw
+_g.engine = engine
+
 local _util = {}
 _util.init_table = function(keys, vals)
     local t = {}
@@ -40,15 +49,6 @@ end
 _util.vlen2 = function(x, y)
     return _util.vlen3(x, y, 0)
 end
-
-local _g = {}
-_g.gui = gui
-_g.callbacks = callbacks
-_g.client = client
-_g.entities = entities
-_g.input = input
-_g.draw = draw
-_g.engine = engine
 
 local _jbt = {}
 _jbt.standard = 1
