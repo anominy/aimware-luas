@@ -66,6 +66,8 @@ _ui.jbt = _util.init_table({"Standard", "Improved"}, {_jbt.standard, _jbt.improv
 _ui.debug_checkbox = _g.gui.Checkbox(_tab.movement, "debug.checkbox", "Debug", false)
 _ui.debug_checkbox:SetDescription("Show debug text on the screen.")
 
+_ui.debug_color = _g.gui.ColorPicker(_tab.movement, "debug.color", "Debug Color", 0, 255, 0, 255)
+
 _ui.debug_specs_checkbox = _g.gui.Checkbox(_tab.movement, "debug.specs.checkbox", "Debug Spectators", false)
 _ui.debug_specs_checkbox:SetDescription("Show list of spectators on the left top corner of the screen.")
 
@@ -151,7 +153,6 @@ _def.lt_alias = "-moveleft"
 
 local _dbg = {}
 _dbg.font = _g.draw.CreateFont("Consolas", 20, 900)
-_dbg.color = {0, 255, 0, 255}
 
 local _cv = {}
 _cv.spread = "weapon_debug_spread_show"
@@ -401,6 +402,8 @@ _g.callbacks.Register(_call.draw, function()
     _context.screen_w, _context.screen_h = _g.draw.GetScreenSize()
 
     if (_ui.debug_checkbox:GetValue() and _context.screen_w ~= nil and _context.screen_h ~= nil and _context.speed ~= nil) then
+        local color = {_ui.debug_color:GetValue()}
+
         _g.draw.SetFont(_dbg.font)
 
         local text = string.format("%03.0f", _context.speed)
@@ -410,7 +413,7 @@ _g.callbacks.Register(_call.draw, function()
         _g.draw.Color(0, 0, 0, 255)
         _g.draw.Text(text_x + 1, text_y + 1, text)
 
-        _g.draw.Color(unpack(_dbg.color))
+        _g.draw.Color(unpack(color))
         _g.draw.Text(text_x, text_y, text)
 
         if (_ui.debug_specs_checkbox:GetValue() and _context.spectators ~= nil) then
@@ -422,7 +425,7 @@ _g.callbacks.Register(_call.draw, function()
                 _g.draw.Color(0, 0, 0, 255)
                 _g.draw.Text(curr_x + 1, curr_y + 1, text)
 
-                _g.draw.Color(unpack(_dbg.color))
+                _g.draw.Color(unpack(color))
                 _g.draw.Text(curr_x, curr_y, text)
 
                 local text_w, text_h = _g.draw.GetTextSize(text)
