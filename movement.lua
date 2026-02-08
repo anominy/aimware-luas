@@ -48,6 +48,7 @@ _g.client = client
 _g.entities = entities
 _g.input = input
 _g.draw = draw
+_g.engine = engine
 
 local _jbt = {}
 _jbt.standard = 1
@@ -400,6 +401,10 @@ end)
 
 _g.callbacks.Register(_call.draw, function()
     _context.screen_w, _context.screen_h = _g.draw.GetScreenSize()
+
+    if (_g.engine.GetServerIP() == nil) then
+        return
+    end
 
     if (_ui.debug_checkbox:GetValue() and _context.screen_w ~= nil and _context.screen_h ~= nil and _context.speed ~= nil) then
         local color = {_ui.debug_color:GetValue()}
