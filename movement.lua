@@ -57,6 +57,18 @@ _ui.lj_alias_rt_editbox:SetDescription("Set custom right alias that will be exec
 _ui.lj_alias_lt_editbox = _g.gui.Editbox(_tab.movement, "lj.alias.lt.editbox", "Long Jump Left Alias")
 _ui.lj_alias_lt_editbox:SetDescription("Set custom left alias that will be executed at start of a long jump.")
 
+_ui.laj_checkbox = _g.gui.Checkbox(_tab.movement, "laj.checkbox", "Ladder Jump", true)
+_ui.laj_checkbox:SetDescription("Release +forward or +back at start of a ladder jump.")
+
+_ui.laj_ground_checkbox = _g.gui.Checkbox(_tab.movement, "laj.ground.checkbox", "Ladder Jump On Ground", false)
+_ui.laj_ground_checkbox:SetDescription("Release +forward or +back at start of a ladder walk-off.")
+
+_ui.laj_alias_fw_editbox = _g.gui.Editbox(_tab.movement, "laj.alias.fw.editbox", "Ladder Jump Forward Alias")
+_ui.laj_alias_fw_editbox:SetDescription("Set custom forawrd alias that will be executed at start of a ladder jump.")
+
+_ui.laj_alias_bw_editbox = _g.gui.Editbox(_tab.movement, "laj.alias.bw.editbox", "Ladder Jump Back Alias")
+_ui.laj_alias_bw_editbox:SetDescription("Set custom back alias that will be executed at statrt of a ladder jump.")
+
 local _def = {}
 _def.spread = 0
 _def.fw_alias = "-forward"
@@ -72,6 +84,10 @@ local _prop = {}
 _prop.obs_target = "m_hObserverTarget"
 _prop.scope = "m_bIsScoped"
 _prop.flags = "m_fFlags"
+_prop.render_mode = "m_nRenderMode"
+
+local _render = {}
+_render.ladder = 2304
 
 local _flag = {}
 _flag.on_ground = 1
@@ -91,6 +107,8 @@ _client.trg = nil
 local _context = {}
 _context.pground = 0
 _context.cground = 0
+_context.pladder = 0
+_context.cladder = 0
 
 _g.callbacks.Register(_call.move, function(cmd)
     _client.lcl = _g.entities.GetLocalPlayer()
@@ -125,6 +143,24 @@ _g.callbacks.Register(_call.move, function(cmd)
         else
             _context.cground = 0
         end
+
+        local render_mode = _client.lcl:GetPropInt(_prop.render_mode)
+        _context.pladder = _context.cladder
+        if (render_mode ~= nil) then
+            if (render_mode == _render.ladder) then
+                if (_context.cladder < 0) then
+                    _context.cladder = 0
+                end
+                _context.cladder = _context.cladder + 1
+            else
+                if (_context.cladder > 0) then
+                    _context.cladder = 0
+                end
+                _context.cladder = _context.cladder - 1
+            end
+        else
+            _context.cladder = 0
+        end
     end
 
     if (_ui.spread_checkbox:GetValue() and _client.plr) then
@@ -140,34 +176,55 @@ _g.callbacks.Register(_call.move, function(cmd)
         _g.client.SetConVar(_cv.spread, _def.spread, true)
     end
 
-    if (_client.lcl and _client.lcl:IsAlive() and bit.band(cmd.buttons, _button.in_jump) == _button.in_jump) then
-        if ((_context.cground == -1) and (_ui.lj_checkbox:GetValue() and _g.input.GetMouseWheelDelta() == 0 and (_context.pground > _ui.lj_ticks_slider:GetValue()) or _ui.lj_scroll_checkbox:GetValue() and _g.input.GetMouseWheelDelta() ~= 0 and (_context.pground >= _ui.lj_scroll_ticks_slider:GetValue()))) then
-            local fw_move = cmd.forwardmove
-            local sw_move = cmd.sidemove
-            if (fw_move > 0) then
-                local fw_alias = _ui.lj_alias_fw_editbox:GetValue()
-                if (fw_alias == nil or fw_alias == "") then
-                    fw_alias = _def.fw_alias
+    if (_client.lcl and _client.lcl:IsAlive()) then
+        if (bit.band(cmd.buttons, _button.in_jump) == _button.in_jump) then
+            if (_context.cground == -1 and (_ui.lj_checkbox:GetValue() and _g.input.GetMouseWheelDelta() == 0 and _context.pground > _ui.lj_ticks_slider:GetValue() or _ui.lj_scroll_checkbox:GetValue() and _g.input.GetMouseWheelDelta() ~= 0 and _context.pground >= _ui.lj_scroll_ticks_slider:GetValue())) then
+                local fw_move = cmd.forwardmove
+                local sw_move = cmd.sidemove
+                if (fw_move > 0) then
+                    local fw_alias = _ui.lj_alias_fw_editbox:GetValue()
+                    if (fw_alias == nil or fw_alias == "") then
+                        fw_alias = _def.fw_alias
+                    end
+                    _g.client.Command(fw_alias, true)
+                elseif (fw_move < 0) then
+                    local bw_alias = _ui.lj_alias_bw_editbox:GetValue()
+                    if (bw_alias == nil or bw_alias == "") then
+                        bw_alias = _def.bw_alias
+                    end
+                    _g.client.Command(bw_alias, true)
+                elseif (sw_move > 0) then
+                    local rt_alias = _ui.lj_alias_rt_editbox:GetValue()
+                    if (rt_alias == nil or rt_alias == "") then
+                        rt_alias = _def.rt_alias
+                    end
+                    _g.client.Command(rt_alias, true)
+                elseif (sw_move < 0) then
+                    local lt_alias = _ui.lj_alias_lt_editbox:GetValue()
+                    if (lt_alias == nil or lt_alias == "") then
+                        lt_alias = _def.lt_alias
+                    end
+                    _g.client.Command(lt_alias, true)
                 end
-                _g.client.Command(fw_alias, true)
-            elseif (fw_move < 0) then
-                local bw_alias = _ui.lj_alias_bw_editbox:GetValue()
-                if (bw_alias == nil or bw_alias == "") then
-                    bw_alias = _def.bw_alias
+            end
+        end
+
+        if (_ui.laj_checkbox:GetValue()) then
+            if (_context.cladder < 0 and _context.pladder > 0 and (_ui.laj_ground_checkbox:GetValue() or (_context.cground < 0))) then
+                local fw_move = cmd.forwardmove
+                if (fw_move > 0) then
+                    local fw_alias = _ui.laj_alias_fw_editbox:GetValue()
+                    if (fw_alias == nil or fw_alias == "") then
+                        fw_alias = _def.fw_alias
+                    end
+                    _g.client.Command(fw_alias, true)
+                elseif (fw_move < 0) then
+                    local bw_alias = _ui.laj_alias_bw_editbox:GetValue()
+                    if (bw_alias == nil or bw_alias == "") then
+                        bw_alias = _def.bw_alias
+                    end
+                    _g.client.Command(bw_alias, true)
                 end
-                _g.client.Command(bw_alias, true)
-            elseif (sw_move > 0) then
-                local rt_alias = _ui.lj_alias_rt_editbox:GetValue()
-                if (rt_alias == nil or rt_alias == "") then
-                    rt_alias = _def.rt_alias
-                end
-                _g.client.Command(rt_alias, true)
-            elseif (sw_move < 0) then
-                local lt_alias = _ui.lj_alias_lt_editbox:GetValue()
-                if (lt_alias == nil or lt_alias == "") then
-                    lt_alias = _def.lt_alias
-                end
-                _g.client.Command(lt_alias, true)
             end
         end
     end
