@@ -390,7 +390,8 @@ _prop.vel_y = "m_vecVelocity[1]"
 _prop.vel_z = "m_vecVelocity[2]"
 
 local _render = {}
-_render.ladder = 2304
+_render.lcl_ladder = 2304
+_render.trg_ladder = 2314
 
 local _flag = {}
 _flag.on_ground = 1
@@ -470,7 +471,7 @@ _g.callbacks.Register(_call.move, function(cmd)
             local render_mode = _client.plr:GetPropInt(_prop.render_mode)
             _context.pladder = _context.cladder
             if (render_mode ~= nil) then
-                if (render_mode == _render.ladder) then
+                if (render_mode == _render.lcl_ladder or render_mode == _render.trg_ladder) then
                     if (_context.cladder < 0) then
                         _context.cladder = 0
                     end
@@ -741,10 +742,6 @@ _g.callbacks.Register(_call.move, function(cmd)
             _context.speed_shadow_offset_y = nil
             _context.speed_shadow_color = nil
         end
-    end
-
-    do
-
     end
 end)
 
