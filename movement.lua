@@ -178,6 +178,9 @@ _ui.debug_specs_checkbox:SetDescription("Show list of spectators on the left top
 _ui.debug_specs_self_checkbox = _g.gui.Checkbox(_tab.movement, "debug.specs.self.checkbox", "Debug Spectators Self", false)
 _ui.debug_specs_self_checkbox:SetDescription("Show yourself on the list of spectators on the left top corner of the screen.")
 
+_ui.debug_jt_checkbox = _g.gui.Checkbox(_tab.movement, "debug.jt.checkbox", "Debug Jump Type", false)
+_ui.debug_jt_checkbox:SetDescription("Show debug text on the right top corner of the screen with current jump type.")
+
 _ui.spread_checkbox = _g.gui.Checkbox(_tab.movement, "spread.show.checkbox", "Spread", true)
 _ui.spread_checkbox:SetDescription("Show weapon spread using the `weapon_debug_spread_show` console variable.")
 
@@ -395,6 +398,10 @@ _render.trg_ladder = 2314
 
 local _flag = {}
 _flag.on_ground = 1
+_flag.ducking = 2
+_flag.water_jump = 8
+_flag.in_water = 1024
+_flag.swim = 4096
 
 local _button = {}
 _button.in_jump = 2
@@ -411,25 +418,58 @@ _client.lcl = nil
 _client.plr = nil
 _client.trg = nil
 
+local _jt = {}
+_jt.none = 0
+_jt.jump = 1
+_jt.perfect = 2
+_jt.jb = 3
+_jt.laj = 4
+_jt.lag = 5
+_jt.lah = 6
+_jt.ps = 7
+_jt.eb = 8
+_jt.hh = 9
+
+_jt.names = {
+    [_jt.none] = "None",
+    [_jt.jump] = "Jump",
+    [_jt.perfect] = "Perfect",
+    [_jt.jb] = "Jump-Bug",
+    [_jt.laj] = "Ladder Jump",
+    [_jt.lag] = "Ladder Glide",
+    [_jt.lah] = "Ladder Hop",
+    [_jt.ps] = "Pixel Surf",
+    [_jt.eb] = "Edge-Bug",
+    [_jt.hh] = "Head Hit"
+}
+
 local _context = {}
 _context.screen_w = nil
 _context.screen_h = nil
 _context.jb_button = 0
 _context.pre_flags = nil
+_context.pre_duck = nil
 _context.pground = 0
 _context.cground = 0
+_context.pduck = 0
+_context.cduck = 0
 _context.pladder = 0
 _context.cladder = 0
 _context.plag = 0
 _context.clag = 0
+_context.ppvelocity = nil
 _context.pvelocity = nil
 _context.cvelocity = nil
+_context.pps = 0
+_context.cps = 0
+_context.jt = _jt.none
 _context.spectators = nil
 _context.speed_font = nil
 _context.speed_shadow_offset_x = nil
 _context.speed_shadow_offset_y = nil
 _context.speed_shadow_color = nil
 _context.speed_color = nil
+_context.takeoff_velocity = nil
 
 _g.callbacks.Register(_call.move, function(cmd)
     _client.lcl = _g.entities.GetLocalPlayer()
@@ -464,6 +504,26 @@ _g.callbacks.Register(_call.move, function(cmd)
                 end
             else
                 _context.cground = 0
+            end
+        end
+
+        do
+            local flags = _client.plr:GetPropInt(_prop.flags)
+            _context.pduck = _context.cduck
+            if (flags ~= nil) then
+                if (bit.band(flags, _flag.ducking) == _flag.ducking) then
+                    if (_context.cduck < 0) then
+                        _context.cduck = 0
+                    end
+                    _context.cduck = _context.cduck + 1
+                else
+                    if (_context.cduck > 0) then
+                        _context.cduck = 0
+                    end
+                    _context.cduck = _context.cduck - 1
+                end
+            else
+                _context.cduck = 0
             end
         end
 
@@ -507,6 +567,7 @@ _g.callbacks.Register(_call.move, function(cmd)
         end
 
         do
+            _context.ppvelocity = _context.pvelocity
             _context.pvelocity = _context.cvelocity
             local x = _client.plr:GetPropFloat("localdata", _prop.vel_x)
             local y = _client.plr:GetPropFloat("localdata", _prop.vel_y)
@@ -515,6 +576,72 @@ _g.callbacks.Register(_call.move, function(cmd)
                 _context.cvelocity = nil
             else
                 _context.cvelocity = {x, y, z}
+            end
+        end
+
+        do
+            local flags = _client.plr:GetPropInt(_prop.flags)
+            _context.pps = _context.cps
+            if (flags ~= nil) then
+                local is_ignored = _context.cladder > 0 or bit.band(flags, _flag.water_jump) == _flag.water_jump or bit.band(flags, _flag.swim) == _flag.swim or bit.band(flags, _flag.in_water) == _flag.in_water
+                if (_context.cground < 0 and (_context.cvelocity ~= nil and _context.cvelocity[3] == -6.25) and not is_ignored) then
+                    if (_context.cps < 0) then
+                        _context.cps = 0
+                    end
+                    _context.cps = _context.cps + 1
+                else
+                    if (_context.cps > 0) then
+                        _context.cps = 0
+                    end
+                    _context.cps = _context.cps - 1
+                end
+            else
+                _context.cps = 0
+            end
+        end
+    end
+
+    do
+        local flags = _client.plr:GetPropInt(_prop.flags)
+        local is_ignored_fl = flags ~= nil and (bit.band(flags, _flag.water_jump) == _flag.water_jump or bit.band(flags, _flag.swim) == _flag.swim or bit.band(flags, _flag.in_water) == _flag.in_water)
+        local is_ignored_mt = _context.cladder > 0 and is_ignored_fl
+
+        local is_pixel_surfed = _context.cps < 0 and _context.pps > 1
+        local is_ladder_jumped = _context.cladder < 0 and _context.pladder > 0
+        local is_ladder_glided = _context.clag < 0 and _context.plag > 0
+        local is_ladder_hopped = is_ladder_jumped and _context.cground == -1 and _context.pground > 0
+        local is_jump_bugged = (_context.pre_duck ~= nil and _context.pre_duck) and _context.cduck < 0 and _context.cground < 0 and ((_context.pvelocity ~= nil and _context.pvelocity[3] < 0) or (_context.pvelocity ~= nil and _context.pvelocity[3] == 0 and _context.ppvelocity ~= nil and _context.ppvelocity[3] < 0)) and (_context.cvelocity ~= nil and _context.cvelocity[3] > 0) and not is_ignored_mt
+
+        if (_context.cground > 1 or is_ignored_fl) then
+            _context.jt = _jt.none
+            _context.takeoff_velocity = nil
+        elseif (is_ladder_hopped) then
+            _context.jt = _jt.lah
+            _context.takeoff_velocity = _context.cvelocity
+        elseif (is_ladder_glided) then
+            _context.jt = _jt.lag
+            _context.takeoff_velocity = _context.cvelocity
+        elseif (is_ladder_jumped) then
+            _context.jt = _jt.laj
+            _context.takeoff_velocity = _context.cvelocity
+        elseif (is_jump_bugged) then
+            _context.jt = _jt.jb
+            _context.takeoff_velocity = _context.cvelocity
+        elseif (is_pixel_surfed) then
+            _context.jt = _jt.ps
+            _context.takeoff_velocity = _context.cvelocity
+        elseif (_context.cground == -1 and _context.cladder < 0) then
+            if (_context.pground == 1 or ((_context.pground == 2 or _context.pground == 3) and _context.pduck == 1 and _context.cduck == 2 and _context.pre_duck and bit.band(_context.pre_flags, _flag.on_ground) == _flag.on_ground)) then
+                _context.jt = _jt.perfect
+                _context.takeoff_velocity = _context.cvelocity
+            else
+                print(tostring(_context.pground) .. "; " .. tostring(_context.cground) .. " | " .. tostring(_context.pduck) .. "; " .. tostring(_context.cduck) .. " | " .. tostring(_context.pre_duck) .. " | " .. tostring(bit.band(_context.pre_flags, _flag.on_ground) == _flag.on_ground))
+                _context.jt = _jt.jump
+                if (_context.pground == 1) then
+                    _context.takeoff_velocity = _context.cvelocity
+                else
+                    _context.takeoff_velocity = _context.pvelocity
+                end
             end
         end
     end
@@ -746,8 +873,12 @@ _g.callbacks.Register(_call.move, function(cmd)
 end)
 
 _g.callbacks.Register(_call.pre_move, function()
-    if (_client.lcl and _client.lcl:IsAlive()) then
-        _context.pre_flags = _client.lcl:GetPropInt(_prop.flags)
+    if (_client.plr and _client.plr:IsAlive()) then
+        _context.pre_flags = _client.plr:GetPropInt(_prop.flags)
+        _context.pre_duck = bit.band(_context.pre_flags, _flag.ducking) == _flag.ducking
+    else
+        _context.pre_flags = nil
+        _context.pre_duck = nil
     end
 end)
 
@@ -829,6 +960,19 @@ _g.callbacks.Register(_call.draw, function()
                 local text_w, text_h = _g.draw.GetTextSize(text)
                 curr_y = curr_y + text_h + space_h
             end
+        end
+
+        if (_ui.debug_jt_checkbox:GetValue()) then
+            local space_w, space_h = _g.draw.GetTextSize(" ")
+            local text = _jt.names[_context.jt]
+            local text_w, text_h = _g.draw.GetTextSize(text)
+            local text_x, text_y = _context.screen_w - text_w - space_w, space_h
+
+            _g.draw.Color(0, 0, 0, 255)
+            _g.draw.Text(text_x + 1, text_y + 1, text)
+
+            _g.draw.Color(_ui.debug_color:GetValue())
+            _g.draw.Text(text_x, text_y, text)
         end
     end
 end)
