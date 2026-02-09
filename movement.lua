@@ -279,6 +279,9 @@ _ui.speed_hide_checkbox:SetDescription("Hide player's speed while scoping.")
 _ui.speed_ladder_checkbox = _g.gui.Checkbox(_tab.movement, "speed.ladder.checkbox", "Speed Ladder", false)
 _ui.speed_ladder_checkbox:SetDescription("Show player's vertical speed while ladder moving.")
 
+_ui.speed_takeoff_checkbox = _g.gui.Checkbox(_tab.movement, "speed.takeoff.checkbox", "Speed Takeoff", false)
+_ui.speed_takeoff_checkbox:SetDescription("Show player's takeoff speed on the screen.")
+
 _ui.speed_font_checkbox = _g.gui.Checkbox(_tab.movement, "speed.font.checkbox", "Speed Font", false)
 _ui.speed_font_checkbox:SetDescription("Override the global font parameters.")
 
@@ -926,6 +929,7 @@ _g.callbacks.Register(_call.draw, function()
 
             _g.draw.SetFont(_context.speed_font)
 
+
             local text = string.format("%0" .. tostring(zeros) .. "." .. tostring(accuracy) .. "f", speed)
             local text_w, text_h = _g.draw.GetTextSize(text)
             local text_x, text_y = _context.screen_w * _ui.speed_pos_x_slider:GetValue() - text_w / 2, _context.screen_h * (1 - _ui.speed_pos_y_slider:GetValue()) - text_h / 2
@@ -938,6 +942,48 @@ _g.callbacks.Register(_call.draw, function()
 
             _g.draw.Color(unpack(_context.speed_color))
             _g.draw.Text(text_x, text_y, text)
+
+            if (_ui.speed_takeoff_checkbox:GetValue() and _context.takeoff_velocity ~= nil) then
+                local tx = _context.takeoff_velocity[1]
+                if (tx == nil) then
+                    tx = 0
+                end
+                local ty = _context.takeoff_velocity[2]
+                if (ty == nil) then
+                    ty = 0
+                end
+                local tz = _context.takeoff_velocity[3]
+                if (tz == nil) then
+                    tz = 0
+                end
+                local tspeed = 0
+                if (not _ui.speed_x_checkbox:GetValue()) then
+                    tx = 0
+                end
+                if (not _ui.speed_y_checkbox:GetValue()) then
+                    ty = 0
+                end
+                if (not _ui.speed_z_checkbox:GetValue()) then
+                    tz = 0
+                end
+                tspeed = _util.vlen3(tx, ty, tz)
+                tspeed = math.max(0, math.min(286, tspeed))
+
+                local space_w, space_h = _g.draw.GetTextSize(" ")
+
+                local ttext = string.format("%0" .. tostring(zeros) .. "." .. tostring(accuracy) .. "f", tspeed)
+                local ttext_w, ttext_h = _g.draw.GetTextSize(ttext)
+                local ttext_x, ttext_y = _context.screen_w * _ui.speed_pos_x_slider:GetValue() - ttext_w / 2, _context.screen_h * (1 - _ui.speed_pos_y_slider:GetValue()) - ttext_h / 2 + text_h + space_h
+
+                if (_context.speed_shadow_offset_x ~= nil and _context.speed_shadow_offset_y ~= nil and _context.speed_shadow_color ~= nil) then
+                    local shd_x, shd_y = ttext_x + _context.speed_shadow_offset_x, ttext_y + _context.speed_shadow_offset_y
+                    _g.draw.Color(unpack(_context.speed_shadow_color))
+                    _g.draw.Text(shd_x, shd_y, ttext)
+                end
+
+                _g.draw.Color(unpack(_context.speed_color))
+                _g.draw.Text(ttext_x, ttext_y, ttext)
+            end
         end
     end
 
