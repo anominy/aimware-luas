@@ -635,7 +635,6 @@ _g.callbacks.Register(_call.move, function(cmd)
                 _context.jt = _jt.perfect
                 _context.takeoff_velocity = _context.cvelocity
             else
-                print(tostring(_context.pground) .. "; " .. tostring(_context.cground) .. " | " .. tostring(_context.pduck) .. "; " .. tostring(_context.cduck) .. " | " .. tostring(_context.pre_duck) .. " | " .. tostring(bit.band(_context.pre_flags, _flag.on_ground) == _flag.on_ground))
                 _context.jt = _jt.jump
                 if (_context.pground == 1) then
                     _context.takeoff_velocity = _context.cvelocity
