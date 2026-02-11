@@ -766,7 +766,7 @@ _g.callbacks.Register(_call.move, function(cmd)
                     if (target) then
                         local target_index = target:GetIndex()
                         if (_client.plr:GetIndex() == target_index) then
-                            local info = _g.client.GetPlayerInfo(target_index)
+                            local info = _g.client.GetPlayerInfo(entity_index)
                             if (not info.IsBot and not info.IsGOTV) then
                                 table.insert(_context.spectators, entity)
                             end
