@@ -1,0 +1,675 @@
+-- Naming Style
+    -- _u = util
+    -- _c = class
+    -- _r = reference
+    -- _t = tab
+    -- _d = default
+    -- _i = interface
+    -- _l = call
+    -- _e = entity
+    -- _s = class
+    -- _p = property
+    -- _f = font
+    -- _x = context
+
+macro varname = (s) ->
+    "#{s}\\gsub('%s+', '.')\\gsub('-+', '.')\\gsub('%.%+', '.')\\lower()"
+
+macro is_blank = (s) ->
+    "#{s} == nil or #(#{s}\\gsub('%s+', '')) == 0"
+
+macro is_empty = (t) ->
+    "#{t} == nil or #(#{t}) == 0"
+
+macro ref = (...) ->
+    "gui.Reference #{...}"
+
+
+
+local _u =
+    fnext: (ft, fn, fs, fw) ->
+        if ft == nil
+            return nil
+
+        fn = tostring fn
+        fs = tostring fs
+        fw = tostring fw
+
+        if ft[fn] == nil
+            ft[fn] = {}
+        if ft[fn][fs] == nil
+            ft[fn][fs] = {}
+        if ft[fn][fs][fw] == nil
+            ft[fn][fs][fw] = draw.CreateFont fn, (tonumber fs), tonumber fw
+
+        ft[fn][fs][fw]
+
+
+    rgb2hsb: (r, g, b, a) ->
+        r = if r then r / 255 else 0
+        g = if g then g / 255 else 0
+        b = if b then b / 255 else 0
+        a = if a then a / 255 else 0
+
+        r = math.max 0, math.min 1, r
+        g = math.max 0, math.min 1, g
+        b = math.max 0, math.min 1, b
+        a = math.max 0, math.min 1, a
+
+        min = math.min r, g, b
+        max = math.max r, g, b
+
+        brightness = max
+        saturation = if max ~= 0 then (max - min) / max else 0
+
+        hue = 0
+        if max ~= min
+            if max == r
+                hue = (g - b) / (max - min)
+            elseif max == g
+                hue = 2 + (b - r) / (max - min)
+            else
+                hue = 4 + (r - g) / (max - min)
+
+        hue /= 6
+        if hue < 0
+            hue += 1
+        elseif hue > 1
+            hue -= 1
+
+        hue, saturation, brightness, a
+
+
+    hsb2rgb: (h, s, b, a) ->
+        h = if h then h else 0
+        s = if s then s else 0
+        b = if b then b else 0
+        a = if a then a else 1
+
+        h = math.max 0, math.min 1, h
+        s = math.max 0, math.min 1, s
+        b = math.max 0, math.min 1, b
+        a = math.max 0, math.min 1, a
+
+        hue = h * 360
+        if s == 0
+            v = math.floor b * 255 + 0.5
+            return v, v, v, math.floor a * 255 + 0.5
+
+        sector = math.floor hue / 60
+        fraction = (hue / 60) - sector
+
+        p = b * (1 - s)
+        q = b * (1 - s * fraction)
+        t = b * (1 - s * (1 - fraction))
+
+        red = green = blue = 0
+        if sector == 0
+            red, green, blue = b, t, p
+        elseif sector == 1
+            red, green, blue = q, b, p
+        elseif sector == 2
+            red, green, blue = p, b, t
+        elseif sector == 3
+            red, green, blue = p, q, b
+        elseif sector == 4
+            red, green, blue = t, p, b
+        else
+            red, green, blue = b, p, q
+
+        (math.floor red * 255 + 0.5), (math.floor green * 255 + 0.5), (math.floor blue * 255 + 0.5), math.floor a * 255 + 0.5
+
+
+
+local _c =
+    BaseBuilder: class
+        new: =>
+            @_parent = nil
+            @_name = nil
+            @_varname = nil
+            @_description = nil
+            @_default = nil
+
+        parent: (parent) =>
+            @_parent = parent
+            @
+
+        name: (name) =>
+            @_name = name
+            @
+
+        varname: (varname) =>
+            @_varname = varname
+            @
+
+        description: (description) =>
+            @_description = description
+            @
+
+        default: (default) =>
+            @_default = default
+            @
+
+        __tostring: =>
+            @_varname .. '("' .. @_name .. '")'
+
+
+
+_c.CheckBuilder = class extends _c.BaseBuilder
+    new: =>
+        @_default = false
+
+    build: =>
+        if $is_blank @_name
+            error 'Name cannot be blank for a checkbox'
+        if $is_blank @_varname
+            @_varname = ($varname @_name) .. '.checkbox'
+
+        element = gui.Checkbox @_parent, @_varname, @_name, @_default
+        unless $is_blank @_description
+            element\SetDescription @_description
+
+        element
+
+
+
+_c.ColorBuilder = class extends _c.BaseBuilder
+    build: =>
+        if $is_blank @_name
+            error 'Name cannot be blank for a color picker'
+        unless $is_blank @_description
+            error 'Description is disallowed for a color picker'
+        if $is_empty @_default
+            error 'Default value cannot be empty for a color picker'
+        if $is_blank @_varname
+            @_varname = ($varname @_name) .. '.colorpicker'
+
+        gui.ColorPicker @_parent, @_varname, @_name, unpack(@_default)
+
+
+
+_c.EditBuilder = class extends _c.BaseBuilder
+    build: =>
+        if $is_blank @_name
+            error 'Name cannot be blank for an editbox'
+        if $is_blank @_varname
+            @_varname = ($varname @_name) .. '.editbox'
+
+        element = gui.Editbox @_parent, @_varname, @_name
+        unless $is_blank @_description
+            element\SetDescription @_description
+
+        element
+
+
+
+_c.ComboBuilder = class extends _c.BaseBuilder
+    build: =>
+        if $is_blank @_name
+            error 'Name cannot be blank for a combobox'
+        if $is_empty @_default
+            error 'Default value cannot be empty for a combobox'
+        if $is_blank @_varname
+            @_varname = ($varname @_name) .. '.combobox'
+
+        element = gui.Combobox @_parent, @_varname, @_name, unpack(@_default)
+        unless $is_blank @_description
+            element\SetDescription @_description
+
+        element
+
+
+
+_c.SliderBuiler = class extends _c.BaseBuilder
+    new: =>
+        @_min = nil
+        @_max = nil
+        @_step = nil
+
+    min: (min) =>
+        @_min = min
+        @
+
+    max: (max) =>
+        @_max = max
+        @
+
+    step: (step) =>
+        @_step = step
+        @
+
+    build: =>
+        if $is_blank @_name
+            error 'Name cannot be blank for a slider'
+        if @_default == nil
+            error 'Default value cannot be nil for a slider'
+        if @_min == nil
+            error 'Minimum value cannot be nil for a slider'
+        if @_max == nil
+            error 'Maximum value cannot be nil for a slider'
+        if @_step == nil
+            error 'Step cannot be nil for a slider'
+        if @_min >= @_max
+            error 'Minimum value should be less than the maximum value for a slider'
+        if $is_blank @_varname
+            @_varname = ($varname @_name) .. '.slider'
+
+        element = gui.Slider @_parent, @_varname, @_name, @_default, @_min, @_max, @_step
+        unless $is_blank @_description
+            element\SetDescription @_description
+
+        element
+
+
+
+_c.TabBuilder = class extends _c.BaseBuilder
+    build: =>
+        if @_parent == nil
+            error 'Parent cannot be nil for a tab'
+        if $is_blank @_name
+            error 'Name cannot be blank for a tab'
+        if $is_blank @_varname
+            @_varname = $varname ((tostring @_parent) .. ' ' .. @_name)
+
+        gui.Tab @_parent, @_varname, @_name
+
+
+
+local _r =
+    menu: $ref 'Menu'
+    settings: $ref 'Settings'
+
+
+
+local _t =
+    movement: _c.TabBuilder!
+        \parent _r.settings
+        \name 'Movement'
+        \build!
+
+
+
+local _d =
+    font:
+        keys: ['Consolas', 'AcPlus IBM BIOS']
+        vals: []
+        size: 20
+        weight: 900
+
+    shadow:
+        offset:
+            x: 1
+            y: 1
+
+    color:
+        debug: [0, 255, 0, 255]
+        shadow: [0, 0, 0, 255]
+        saturation: 1
+        brightness: 1
+
+
+
+local _i =
+    global_font_check: _c.CheckBuilder!
+        \parent _t.movement
+        \name 'Global Font'
+        \description 'Render any supported text using the global font.'
+        \default true
+        \build!
+
+    global_font_name_combo: _c.ComboBuilder!
+        \parent _t.movement
+        \name 'Global Font Name'
+        \description 'Set the global font name used to render any text.'
+        \default _d.font.keys
+        \build!
+
+    global_font_size_slider: _c.SliderBuiler!
+        \parent _t.movement
+        \name 'Global Font Size'
+        \description 'Set the global font size used to render any text.'
+        \default _d.font.size
+        \min 1
+        \max 64
+        \step 1
+        \build!
+
+    global_font_weight_slider: _c.SliderBuiler!
+        \parent _t.movement
+        \name 'Global Font Weight'
+        \description 'Set the global font weight used to render any text.'
+        \default _d.font.weight
+        \min 100
+        \max 900
+        \step 100
+        \build!
+
+    global_shadow_check: _c.CheckBuilder!
+        \parent _t.movement
+        \name 'Global Shadow'
+        \description 'Render shadows of all elements that are supported. '
+        \default true
+        \build!
+
+    global_shadow_offset_x_slider: _c.SliderBuiler!
+        \parent _t.movement
+        \name 'Global Shadow Offset X-Axis'
+        \description 'Set the global shadow offset on the x-axis.'
+        \default _d.shadow.offset.x
+        \min -2
+        \max 2
+        \step 1
+        \build!
+
+    global_shadow_offset_y_slider: _c.SliderBuiler!
+        \parent _t.movement
+        \name 'Global Shadow Offset Y-Axis'
+        \description 'Set the global shadow offset on the y-axis.'
+        \default _d.shadow.offset.y
+        \min -2
+        \max 2
+        \step 1
+        \build!
+
+    global_shadow_color: _c.ColorBuilder!
+        \parent _t.movement
+        \name 'Global Shadow Color'
+        \default _d.color.shadow
+        \build!
+
+    global_shadow_saturation_slider: _c.SliderBuiler!
+        \parent _t.movement
+        \name 'Global Shadow Color Saturation'
+        \description 'Set the global shadow color saturation.'
+        \default _d.color.saturation
+        \min 0
+        \max 1
+        \step 0.01
+        \build!
+
+    global_shadow_brightness_slider: _c.SliderBuiler!
+        \parent _t.movement
+        \name 'Global Shadow Color Brightness'
+        \description 'Set the global shadow color brightness.'
+        \default _d.color.brightness
+        \min 0
+        \max 1
+        \step 0.01
+        \build!
+
+    debug_check: _c.CheckBuilder!
+        \parent _t.movement
+        \name 'Debug'
+        \description 'Show debug text on the screen.'
+        \build!
+
+    debug_spectators_check: _c.CheckBuilder!
+        \parent _t.movement
+        \name 'Debug Spectators'
+        \description 'Show the list of spectators in the top-left corner of the screen.'
+        \build!
+
+    debug_spectators_bot_check: _c.CheckBuilder!
+        \parent _t.movement
+        \name 'Debug Spectators Bot'
+        \description 'Switch to show or hide bots from the list of spectators.'
+        \build!
+
+    debug_spectators_self_check: _c.CheckBuilder!
+        \parent _t.movement
+        \name 'Debug Spectators Self'
+        \description 'Switch to show or hide yourself from the list of spectators.'
+        \build!
+
+    debug_color: _c.ColorBuilder!
+        \parent _t.movement
+        \name 'Debug Color'
+        \default _d.color.debug
+        \build!
+
+    debug_saturation_slider: _c.SliderBuiler!
+        \parent _t.movement
+        \name 'Debug Color Saturation'
+        \description 'Set the debug color saturation.'
+        \default _d.color.saturation
+        \min 0
+        \max 1
+        \step 0.01
+        \build!
+
+    debug_brightness_slider: _c.SliderBuiler!
+        \parent _t.movement
+        \name 'Debug Color Brightness'
+        \description 'Set the debug color brightness.'
+        \default _d.color.brightness
+        \min 0
+        \max 1
+        \step 0.01
+        \build!
+
+    debug_font_check: _c.CheckBuilder!
+        \parent _t.movement
+        \name 'Debug Font'
+        \description 'Override the global font parameters.'
+        \build!
+
+    debug_font_name_combo: _c.ComboBuilder!
+        \parent _t.movement
+        \name 'Debug Font Name'
+        \description 'Set the debug font name used to render debug text.'
+        \default _d.font.keys
+        \build!
+
+    debug_font_size_slider: _c.SliderBuiler!
+        \parent _t.movement
+        \name 'Debug Font Size'
+        \description 'Set the debug font size used to render debug text.'
+        \default _d.font.size
+        \min 1
+        \max 64
+        \step 1
+        \build!
+
+    debug_font_weight_slider: _c.SliderBuiler!
+        \parent _t.movement
+        \name 'Debug Font Weight'
+        \description 'Set the debug font weight used to render debug text.'
+        \default _d.font.weight
+        \min 100
+        \max 900
+        \step 100
+        \build!
+
+    debug_shadow_check: _c.CheckBuilder!
+        \parent _t.movement
+        \name 'Debug Shadow'
+        \description 'Override the global shadow parameters.'
+        \build!
+
+    debug_shadow_offset_x_slider: _c.SliderBuiler!
+        \parent _t.movement
+        \name 'Debug Shadow Offset X-Axis'
+        \description 'Set the debug shadow offset on the x-axis.'
+        \default _d.shadow.offset.x
+        \min -2
+        \max 2
+        \step 1
+        \build!
+
+    debug_shadow_offset_y_slider: _c.SliderBuiler!
+        \parent _t.movement
+        \name 'Debug Shadow Offset Y-Axis'
+        \description 'Set the debug shadow offset on the y-axis.'
+        \default _d.shadow.offset.y
+        \min -2
+        \max 2
+        \step 1
+        \build!
+
+    debug_shadow_color: _c.ColorBuilder!
+        \parent _t.movement
+        \name 'Debug Shadow Color'
+        \default _d.color.shadow
+        \build!
+
+    debug_shadow_saturation_slider: _c.SliderBuiler!
+        \parent _t.movement
+        \name 'Debug Shadow Color Saturation'
+        \description 'Set the debug shadow color saturation.'
+        \default _d.color.saturation
+        \min 0
+        \max 1
+        \step 0.01
+        \build!
+
+    debug_shadow_brightness_slider: _c.SliderBuiler!
+        \parent _t.movement
+        \name 'Debug Shadow Color Brightness'
+        \description 'Set the debug shadow color brightness.'
+        \default _d.color.brightness
+        \min 0
+        \max 1
+        \step 0.01
+        \build!
+
+
+
+local _s =
+    player: 'CCSPlayer'
+
+
+
+local _p =
+    otrg: 'm_hObserverTarget'
+
+
+
+local _l =
+    move: 'CreateMove'
+    pre_move: 'PreMove'
+    draw: 'Draw'
+    unload: 'Unload'
+
+
+
+local _e =
+    lcl: nil
+    plr: nil
+    trg: nil
+
+
+
+local _f = {}
+
+
+
+local _x =
+    screen:
+        w: nil
+        h: nil
+
+    spectators: nil
+
+
+
+callbacks.Register _l.move, (cmd) ->
+    _e.lcl = entities.GetLocalPlayer!
+    if _e.lcl
+        if _e.lcl\IsAlive!
+            _e.plr = _e.lcl
+            _e.trg = nil
+        else
+            _e.trg = _e.lcl\GetPropEntity _p.otrg
+            _e.plr = _e.trg
+    else
+        _e.plr = nil
+        _e.trg = nil
+
+    if _e.plr and _e.plr\IsAlive!
+        do
+            _x.spectators = {}
+            for _, ent in pairs entities.FindByClass _s.player
+                if ent\IsAlive!
+                    continue
+                if not _i.debug_spectators_self_check\GetValue!
+                    if ent\GetIndex! == _e.lcl\GetIndex!
+                        continue
+                target = ent\GetPropEntity _p.otrg
+                if not target
+                    continue
+                if target\GetIndex! ~= _e.plr\GetIndex!
+                    continue
+                if not _i.debug_spectators_bot_check\GetValue!
+                    info = client.GetPlayerInfo ent\GetIndex!
+                    if info.IsBot or info.IsGOTV
+                        continue
+                _x.spectators[] = ent
+
+
+
+callbacks.Register _l.draw, ->
+    _x.screen.w, _x.screen.h = draw.GetScreenSize!
+    if not _x.screen.w or not _x.screen.h
+        return
+
+    if _i.debug_check\GetValue!
+        fn, fs, fw = nil, nil, nil
+        if _i.debug_font_check\GetValue!
+            fn = _d.font.keys[_i.debug_font_name_combo\GetValue! + 1]
+            fs = _i.debug_font_size_slider\GetValue!
+            fw = _i.debug_font_weight_slider\GetValue!
+        elseif _i.global_font_check\GetValue!
+            fn = _d.font.keys[_i.global_font_name_combo\GetValue! + 1]
+            fs = _i.global_font_size_slider\GetValue!
+            fw = _i.global_font_weight_slider\GetValue!
+        else
+            return
+
+        if not fn or not fs or not fw
+            return
+
+        font = _u.fnext(_f, fn, fs, fw)
+        if not font
+            return
+
+        sc, sx, sy, ss, sb = nil, nil, nil, nil, nil
+        if _i.debug_shadow_check\GetValue!
+            sc = {_i.debug_shadow_color\GetValue!}
+            sx = _i.debug_shadow_offset_x_slider\GetValue!
+            sy = _i.debug_shadow_offset_y_slider\GetValue!
+            ss = _i.debug_shadow_saturation_slider\GetValue!
+            sb = _i.debug_shadow_brightness_slider\GetValue!
+        elseif _i.global_shadow_check\GetValue!
+            sc = {_i.global_shadow_color\GetValue!}
+            sx = _i.global_shadow_offset_x_slider\GetValue!
+            sy = _i.global_shadow_offset_y_slider\GetValue!
+            ss = _i.global_shadow_saturation_slider\GetValue!
+            sb = _i.global_shadow_brightness_slider\GetValue!
+
+        if sc ~= nil and ss ~= nil and sb ~= nil
+            h, s, b, a = _u.rgb2hsb unpack sc
+            sc = {_u.hsb2rgb h, s * ss, b * sb, a}
+
+        draw.SetFont font
+
+        dc = {_i.debug_color\GetValue!}
+        ds = _i.debug_saturation_slider\GetValue!
+        db = _i.debug_brightness_slider\GetValue!
+        do
+            h, s, b, a = _u.rgb2hsb unpack dc
+            dc = {_u.hsb2rgb h, s * ds, b * db, a}
+
+        if _i.debug_spectators_check\GetValue!
+            space_w, space_h = draw.GetTextSize ' '
+            curr_x, curr_y = space_w, space_h
+            for _, ent in ipairs _x.spectators
+                text = ent\GetName!
+
+                draw.Color unpack sc
+                draw.Text curr_x + sx, curr_y + sy, text
+
+                draw.Color unpack dc
+                draw.Text curr_x, curr_y, text
+
+                text_w, text_h = draw.GetTextSize text
+                curr_y += text_h + space_h
