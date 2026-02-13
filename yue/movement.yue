@@ -906,6 +906,18 @@ callbacks.Register _l.move, (cmd) ->
 
         do
             _x.scope = _e.plr\GetPropBool _p.scope
+    else
+        _x.specs = {}
+        _x.cground = 0
+        _x.pground = 0
+        _x.cduck = 0
+        _x.pduck = 0
+        _x.cladder = 0
+        _x.pladder = 0
+        _x.cvel = nil
+        _x.pvel = nil
+        _x.ppvel = nil
+        _x.scope = false
 
     if _e.lcl and _e.lcl\IsAlive!
         _x.plag = _x.clag
@@ -922,6 +934,7 @@ callbacks.Register _l.move, (cmd) ->
             _x.clag = 0
     else
         _x.clag = 0
+        _x.plag = 0
 
     if _e.plr and _e.plr\IsAlive!
         flags = _e.plr\GetPropInt _p.flags
@@ -948,6 +961,8 @@ callbacks.Register _l.move, (cmd) ->
                 _x.jt = _jt.perfect
             else
                 _x.jt = _jt.jump
+    else
+        _x.jt = _jt.none
 
 
 
