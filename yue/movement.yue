@@ -10,10 +10,14 @@
     -- _s = class
     -- _p = property
     -- _f = font
+    -- _n = number
     -- _x = context
+    -- _fl = flag
+    -- _bt = button
+    -- _jt = jumptype
 
 macro varname = (s) ->
-    "#{s}\\gsub('%s+', '.')\\gsub('-+', '.')\\gsub('%.%+', '.')\\lower()"
+    "#{s}\\gsub('%s+', '.')\\gsub('-+', '.')\\gsub('%.%+', '.')\\lower!"
 
 macro is_blank = (s) ->
     "#{s} == nil or #(#{s}\\gsub('%s+', '')) == 0"
@@ -120,6 +124,14 @@ local _u =
         (math.floor red * 255 + 0.5), (math.floor green * 255 + 0.5), (math.floor blue * 255 + 0.5), math.floor a * 255 + 0.5
 
 
+    vlen3: (x, y, z) ->
+        x = tonumber x
+        y = tonumber y
+        z = tonumber z
+
+        math.sqrt x^2 + y^2 + z^2
+
+
 
 local _c =
     BaseBuilder: class
@@ -220,7 +232,7 @@ _c.ComboBuilder = class extends _c.BaseBuilder
 
 
 
-_c.SliderBuiler = class extends _c.BaseBuilder
+_c.SliderBuilder = class extends _c.BaseBuilder
     new: =>
         @_min = nil
         @_max = nil
@@ -293,19 +305,43 @@ local _d =
     font:
         keys: ['Consolas', 'AcPlus IBM BIOS']
         vals: []
-        size: 20
-        weight: 900
+
+        size:
+            min: 1
+            max: 64
+            step: 1
+            default: 20
+
+        weight:
+            min: 100
+            max: 900
+            step: 100
+            default: 900
 
     shadow:
         offset:
             x: 1
             y: 1
+            min: -2
+            max: 2
+            step: 1
 
     color:
         debug: [0, 255, 0, 255]
         shadow: [0, 0, 0, 255]
-        saturation: 1
-        brightness: 1
+        speed: [0, 255, 0, 255]
+
+        saturation:
+            min: 0
+            max: 1
+            step: 0.01
+            default: 1
+
+        brightness:
+            min: 0
+            max: 1
+            step: 0.01
+            default: 1
 
 
 
@@ -324,24 +360,24 @@ local _i =
         \default _d.font.keys
         \build!
 
-    global_font_size_slider: _c.SliderBuiler!
+    global_font_size_slider: _c.SliderBuilder!
         \parent _t.movement
         \name 'Global Font Size'
         \description 'Set the global font size used to render any text.'
-        \default _d.font.size
-        \min 1
-        \max 64
-        \step 1
+        \default _d.font.size.default
+        \min _d.font.size.min
+        \max _d.font.size.max
+        \step _d.font.size.step
         \build!
 
-    global_font_weight_slider: _c.SliderBuiler!
+    global_font_weight_slider: _c.SliderBuilder!
         \parent _t.movement
         \name 'Global Font Weight'
         \description 'Set the global font weight used to render any text.'
-        \default _d.font.weight
-        \min 100
-        \max 900
-        \step 100
+        \default _d.font.weight.default
+        \min _d.font.weight.min
+        \max _d.font.weight.max
+        \step _d.font.weight.step
         \build!
 
     global_shadow_check: _c.CheckBuilder!
@@ -351,24 +387,24 @@ local _i =
         \default true
         \build!
 
-    global_shadow_offset_x_slider: _c.SliderBuiler!
+    global_shadow_offset_x_slider: _c.SliderBuilder!
         \parent _t.movement
         \name 'Global Shadow Offset X-Axis'
         \description 'Set the global shadow offset on the x-axis.'
         \default _d.shadow.offset.x
-        \min -2
-        \max 2
-        \step 1
+        \min _d.shadow.offset.min
+        \max _d.shadow.offset.max
+        \step _d.shadow.offset.step
         \build!
 
-    global_shadow_offset_y_slider: _c.SliderBuiler!
+    global_shadow_offset_y_slider: _c.SliderBuilder!
         \parent _t.movement
         \name 'Global Shadow Offset Y-Axis'
         \description 'Set the global shadow offset on the y-axis.'
         \default _d.shadow.offset.y
-        \min -2
-        \max 2
-        \step 1
+        \min _d.shadow.offset.min
+        \max _d.shadow.offset.max
+        \step _d.shadow.offset.step
         \build!
 
     global_shadow_color: _c.ColorBuilder!
@@ -377,24 +413,24 @@ local _i =
         \default _d.color.shadow
         \build!
 
-    global_shadow_saturation_slider: _c.SliderBuiler!
+    global_shadow_saturation_slider: _c.SliderBuilder!
         \parent _t.movement
         \name 'Global Shadow Color Saturation'
         \description 'Set the global shadow color saturation.'
-        \default _d.color.saturation
-        \min 0
-        \max 1
-        \step 0.01
+        \default _d.color.saturation.default
+        \min _d.color.saturation.min
+        \max _d.color.saturation.max
+        \step _d.color.saturation.step
         \build!
 
-    global_shadow_brightness_slider: _c.SliderBuiler!
+    global_shadow_brightness_slider: _c.SliderBuilder!
         \parent _t.movement
         \name 'Global Shadow Color Brightness'
         \description 'Set the global shadow color brightness.'
-        \default _d.color.brightness
-        \min 0
-        \max 1
-        \step 0.01
+        \default _d.color.brightness.default
+        \min _d.color.brightness.min
+        \max _d.color.brightness.max
+        \step _d.color.brightness.step
         \build!
 
     debug_check: _c.CheckBuilder!
@@ -421,30 +457,36 @@ local _i =
         \description 'Switch to show or hide yourself from the list of spectators.'
         \build!
 
+    debug_jt_check: _c.CheckBuilder!
+        \parent _t.movement
+        \name 'Debug Jump Type'
+        \description 'Show debug text on the top-right corner of the screen with current jump type.'
+        \build!
+
     debug_color: _c.ColorBuilder!
         \parent _t.movement
         \name 'Debug Color'
         \default _d.color.debug
         \build!
 
-    debug_saturation_slider: _c.SliderBuiler!
+    debug_saturation_slider: _c.SliderBuilder!
         \parent _t.movement
         \name 'Debug Color Saturation'
         \description 'Set the debug color saturation.'
-        \default _d.color.saturation
-        \min 0
-        \max 1
-        \step 0.01
+        \default _d.color.saturation.default
+        \min _d.color.saturation.min
+        \max _d.color.saturation.max
+        \step _d.color.saturation.step
         \build!
 
-    debug_brightness_slider: _c.SliderBuiler!
+    debug_brightness_slider: _c.SliderBuilder!
         \parent _t.movement
         \name 'Debug Color Brightness'
         \description 'Set the debug color brightness.'
-        \default _d.color.brightness
-        \min 0
-        \max 1
-        \step 0.01
+        \default _d.color.brightness.default
+        \min _d.color.brightness.min
+        \max _d.color.brightness.max
+        \step _d.color.brightness.step
         \build!
 
     debug_font_check: _c.CheckBuilder!
@@ -460,24 +502,24 @@ local _i =
         \default _d.font.keys
         \build!
 
-    debug_font_size_slider: _c.SliderBuiler!
+    debug_font_size_slider: _c.SliderBuilder!
         \parent _t.movement
         \name 'Debug Font Size'
         \description 'Set the debug font size used to render debug text.'
-        \default _d.font.size
-        \min 1
-        \max 64
-        \step 1
+        \default _d.font.size.default
+        \min _d.font.size.min
+        \max _d.font.size.max
+        \step _d.font.size.step
         \build!
 
-    debug_font_weight_slider: _c.SliderBuiler!
+    debug_font_weight_slider: _c.SliderBuilder!
         \parent _t.movement
         \name 'Debug Font Weight'
         \description 'Set the debug font weight used to render debug text.'
-        \default _d.font.weight
-        \min 100
-        \max 900
-        \step 100
+        \default _d.font.weight.default
+        \min _d.font.weight.min
+        \max _d.font.weight.max
+        \step _d.font.weight.step
         \build!
 
     debug_shadow_check: _c.CheckBuilder!
@@ -486,24 +528,24 @@ local _i =
         \description 'Override the global shadow parameters.'
         \build!
 
-    debug_shadow_offset_x_slider: _c.SliderBuiler!
+    debug_shadow_offset_x_slider: _c.SliderBuilder!
         \parent _t.movement
         \name 'Debug Shadow Offset X-Axis'
         \description 'Set the debug shadow offset on the x-axis.'
         \default _d.shadow.offset.x
-        \min -2
-        \max 2
-        \step 1
+        \min _d.shadow.offset.min
+        \max _d.shadow.offset.max
+        \step _d.shadow.offset.step
         \build!
 
-    debug_shadow_offset_y_slider: _c.SliderBuiler!
+    debug_shadow_offset_y_slider: _c.SliderBuilder!
         \parent _t.movement
         \name 'Debug Shadow Offset Y-Axis'
         \description 'Set the debug shadow offset on the y-axis.'
         \default _d.shadow.offset.y
-        \min -2
-        \max 2
-        \step 1
+        \min _d.shadow.offset.min
+        \max _d.shadow.offset.max
+        \step _d.shadow.offset.step
         \build!
 
     debug_shadow_color: _c.ColorBuilder!
@@ -512,24 +554,153 @@ local _i =
         \default _d.color.shadow
         \build!
 
-    debug_shadow_saturation_slider: _c.SliderBuiler!
+    debug_shadow_saturation_slider: _c.SliderBuilder!
         \parent _t.movement
         \name 'Debug Shadow Color Saturation'
         \description 'Set the debug shadow color saturation.'
-        \default _d.color.saturation
-        \min 0
-        \max 1
-        \step 0.01
+        \default _d.color.saturation.default
+        \min _d.color.saturation.min
+        \max _d.color.saturation.max
+        \step _d.color.saturation.step
         \build!
 
-    debug_shadow_brightness_slider: _c.SliderBuiler!
+    debug_shadow_brightness_slider: _c.SliderBuilder!
         \parent _t.movement
         \name 'Debug Shadow Color Brightness'
         \description 'Set the debug shadow color brightness.'
-        \default _d.color.brightness
-        \min 0
-        \max 1
-        \step 0.01
+        \default _d.color.brightness.default
+        \min _d.color.brightness.min
+        \max _d.color.brightness.max
+        \step _d.color.brightness.step
+        \build!
+
+    speed_check: _c.CheckBuilder!
+        \parent _t.movement
+        \name 'Speed'
+        \description 'Show player\'s speed on the screen.'
+        \build!
+
+    speed_hide_check: _c.CheckBuilder!
+        \parent _t.movement
+        \name 'Speed Hide'
+        \description 'Hide player\'s speed while scoping.'
+        \build!
+
+    speed_ladder_check: _c.CheckBuilder!
+        \parent _t.movement
+        \name 'Speed Ladder'
+        \description 'Show player\'s vertical speed while ladder moving.'
+        \build!
+
+    speed_color: _c.ColorBuilder!
+        \parent _t.movement
+        \name 'Speed Color'
+        \default _d.color.speed
+        \build!
+
+    speed_saturation_slider: _c.SliderBuilder!
+        \parent _t.movement
+        \name 'Speed Color Saturation'
+        \description 'Set the speed color saturation.'
+        \default _d.color.saturation.default
+        \min _d.color.saturation.min
+        \max _d.color.saturation.max
+        \step _d.color.saturation.step
+        \build!
+
+    speed_brightness_slider: _c.SliderBuilder!
+        \parent _t.movement
+        \name 'Speed Color Brightness'
+        \description 'Set the speed color brightness.'
+        \default _d.color.brightness.default
+        \min _d.color.brightness.min
+        \max _d.color.brightness.max
+        \step _d.color.brightness.step
+        \build!
+
+    speed_font_check: _c.CheckBuilder!
+        \parent _t.movement
+        \name 'Speed Font'
+        \description 'Override the global font parameters.'
+        \build!
+
+    speed_font_name_combo: _c.ComboBuilder!
+        \parent _t.movement
+        \name 'Speed Font Name'
+        \description 'Set the speed font name used to render speed text.'
+        \default _d.font.keys
+        \build!
+
+    speed_font_size_slider: _c.SliderBuilder!
+        \parent _t.movement
+        \name 'Speed Font Size'
+        \description 'Set the speed font size used to render speed text.'
+        \default _d.font.size.default
+        \min _d.font.size.min
+        \max _d.font.size.max
+        \step _d.font.size.step
+        \build!
+
+    speed_font_weight_slider: _c.SliderBuilder!
+        \parent _t.movement
+        \name 'Speed Font Weight'
+        \description 'Set the speed font weight used to render speed text.'
+        \default _d.font.weight.default
+        \min _d.font.weight.min
+        \max _d.font.weight.max
+        \step _d.font.weight.step
+        \build!
+
+    speed_shadow_check: _c.CheckBuilder!
+        \parent _t.movement
+        \name 'Speed Shadow'
+        \description 'Override the global shadow parameters.'
+        \build!
+
+    speed_shadow_offset_x_slider: _c.SliderBuilder!
+        \parent _t.movement
+        \name 'Speed Shadow Offset X-Axis'
+        \description 'Set the speed shadow offset on the x-axis.'
+        \default _d.shadow.offset.x
+        \min _d.shadow.offset.min
+        \max _d.shadow.offset.max
+        \step _d.shadow.offset.step
+        \build!
+
+    speed_shadow_offset_y_slider: _c.SliderBuilder!
+        \parent _t.movement
+        \name 'Speed Shadow Offset Y-Axis'
+        \description 'Set the speed shadow offset on the y-axis.'
+        \default _d.shadow.offset.y
+        \min _d.shadow.offset.min
+        \max _d.shadow.offset.max
+        \step _d.shadow.offset.step
+        \build!
+
+    speed_shadow_color: _c.ColorBuilder!
+        \parent _t.movement
+        \name 'Speed Shadow Color'
+        \default _d.color.shadow
+        \build!
+
+    speed_shadow_saturation_slider: _c.SliderBuilder!
+        \parent _t.movement
+        \name 'Speed Shadow Color Saturation'
+        \description 'Set the speed shadow color saturation.'
+        \default _d.color.saturation.default
+        \min _d.color.saturation.min
+        \max _d.color.saturation.max
+        \step _d.color.saturation.step
+        \build!
+
+    speed_shadow_brightness_slider: _c.SliderBuilder!
+        \parent _t.movement
+        \name 'Speed Shadow Color Brightness'
+        \description 'Set the speed shadow color brightness.'
+        \default _d.color.brightness.default
+        \min _d.color.brightness.min
+        \max _d.color.brightness.max
+        \step _d.color.brightness.step
         \build!
 
 
@@ -541,6 +712,12 @@ local _s =
 
 local _p =
     otrg: 'm_hObserverTarget'
+    scope: 'm_bIsScoped'
+    flags: 'm_fFlags'
+    rmode: 'm_nRenderMode'
+    velx: 'm_vecVelocity[0]'
+    vely: 'm_vecVelocity[1]'
+    velz: 'm_vecVelocity[2]'
 
 
 
@@ -563,12 +740,71 @@ local _f = {}
 
 
 
+local _n =
+    lcllad: 2304
+    trglad: 2314
+
+
+
+local _fl =
+    on_ground: 1
+    ducking: 2
+    water_jump: 8
+    in_water: 1024
+    swim: 4096
+
+
+
+local _bt =
+    in_jump: 2
+    in_duck: 4
+
+
+
+local _jt =
+    none: 0
+    jump: 1
+    perfect: 2
+    jb: 3
+    laj: 4
+    lag: 5
+    lah: 6
+
+_jt[_jt.none] = 'None'
+_jt[_jt.jump] = 'Jump'
+_jt[_jt.perfect] = 'Perfect'
+_jt[_jt.jb] = 'Jump-Bug'
+_jt[_jt.laj] = 'Ladder Jump'
+_jt[_jt.lag] = 'Ladder Glide'
+_jt[_jt.lah] = 'Ladder Hop'
+
+
+
 local _x =
     screen:
         w: nil
         h: nil
 
-    spectators: nil
+    specs: nil
+    scope: nil
+    jt: _jt.none
+
+    cvel: nil
+    pvel: nil
+    ppvel: nil
+
+    cground: 0
+    pground: 0
+    cduck: 0
+    pduck: 0
+    cladder: 0
+    pladder: 0
+    clag: 0
+    plag: 0
+
+    pre_flags: nil
+    pre_duck: nil
+    pre_ground: nil
 
 
 
@@ -587,7 +823,7 @@ callbacks.Register _l.move, (cmd) ->
 
     if _e.plr and _e.plr\IsAlive!
         do
-            _x.spectators = {}
+            _x.specs = {}
             for _, ent in pairs entities.FindByClass _s.player
                 if ent\IsAlive!
                     continue
@@ -603,7 +839,127 @@ callbacks.Register _l.move, (cmd) ->
                     info = client.GetPlayerInfo ent\GetIndex!
                     if info.IsBot or info.IsGOTV
                         continue
-                _x.spectators[] = ent
+                _x.specs[] = ent
+
+        do
+            flags = _e.plr\GetPropInt _p.flags
+            _x.pground = _x.cground
+            if flags
+                if (bit.band flags, _fl.on_ground) == _fl.on_ground
+                    if _x.cground < 0
+                        _x.cground = 0
+                    _x.cground += 1
+                else
+                    if _x.cground > 0
+                        _x.cground = 0
+                    _x.cground -= 1
+            else
+                _x.cground = 0
+
+        do
+            flags = _e.plr\GetPropInt _p.flags
+            _x.pduck = _x.cduck
+            if flags
+                if (bit.band flags, _fl.ducking) == _fl.ducking
+                    if _x.cduck < 0
+                        _x.cduck = 0
+                    _x.cduck += 1
+                else
+                    if _x.cduck > 0
+                        _x.cduck = 0
+                    _x.cduck -= 1
+            else
+                _x.cdcuk = 0
+
+        do
+            rmode = _e.plr\GetPropInt _p.rmode
+            _x.pladder = _x.cladder
+            if rmode
+                if rmode == _n.lcllad or rmode == _n.trglad
+                    if _x.cladder < 0
+                        _x.cladder = 0
+                    _x.cladder += 1
+                else
+                    if _x.cladder > 0
+                        _x.cladder = 0
+                    _x.cladder -= 1
+            else
+                _x.cladder = 0
+
+        do
+            _x.ppvel = _x.pvel
+            _x.pvel = _x.cvel
+
+            x = _e.plr\GetPropFloat 'localdata', _p.velx
+            y = _e.plr\GetPropFloat 'localdata', _p.vely
+            z = _e.plr\GetPropFloat 'localdata', _p.velz
+            if not x and not y and not z
+                _x.cvel = nil
+            else
+                if not x
+                    x = 0
+                if not y
+                    y = 0
+                if not z
+                    z = 0
+                _x.cvel = [x, y, z]
+
+        do
+            _x.scope = _e.plr\GetPropBool _p.scope
+
+    if _e.lcl and _e.lcl\IsAlive!
+        _x.plag = _x.clag
+        if _x.cladder ~= 0
+            if _x.cladder > 0 and (bit.band cmd.buttons, _bt.in_jump) == _bt.in_jump
+                if _x.clag < 0
+                    _x.clag = 0
+                _x.clag += 1
+            else
+                if _x.clag > 0
+                    _x.clag = 0
+                _x.clag -= 1
+        else
+            _x.clag = 0
+    else
+        _x.clag = 0
+
+    if _e.plr and _e.plr\IsAlive!
+        flags = _e.plr\GetPropInt _p.flags
+        is_ignored_fl = flags and ((bit.band flags, _fl.water_jump) == _fl.water_jump or (bit.band flags, _fl.swim) == _fl.swim or (bit.band flags, _fl.in_water) == _fl.in_water)
+        is_ignored_mt = _x.cladder > 0 and is_ignored_fl
+
+        is_ladder_jumped = _x.cladder < 0 and _x.pladder > 0
+        is_ladder_glided = _x.clag < 0  and _x.plag > 0
+        is_ladder_hopped = is_ladder_jumped and _x.cground == -1 and _x.pground > 0
+        is_jump_bugged = _x.pre_duck and _x.cduck < 0 and _x.cground < 0 and ((_x.pvel and _x.pvel[3] < 0) or (_x.pvel and _x.pvel[3] == 0 and _x.ppvel and _x.ppvel[3] < 0)) and _x.cvel and _x.cvel[3] > 0 and not is_ignored_mt
+
+        if _x.cground > 1 or is_ignored_fl
+            _x.jt = _jt.none
+        elseif is_ladder_hopped
+            _x.jt = _jt.lah
+        elseif is_ladder_glided
+            _x.jt = _jt.lag
+        elseif is_ladder_jumped
+            _x.jt = _jt.laj
+        elseif is_jump_bugged
+            _x.jt = _jt.jb
+        elseif _x.cground == -1 and _x.cladder < 0
+            if _x.pground == 1 or (_x.pground == 2 or _x.pground == 3) and _x.pduck == 1 and _x.cduck == 2 and _x.pre_duck and _x.pre_ground
+                _x.jt = _jt.perfect
+            else
+                _x.jt = _jt.jump
+
+
+
+callbacks.Register _l.pre_move, (cmd) ->
+    if _e.plr and _e.plr\IsAlive!
+        _x.pre_flags = _e.plr\GetPropInt _p.flags
+        _x.pre_duck = (bit.band _x.pre_flags, _fl.ducking) == _fl.ducking
+        _x.pre_ground = (bit.band _x.pre_flags, _fl.on_ground) == _fl.on_ground
+    else
+        _x.pre_flags = nil
+        _x.pre_duck = nil
+        _x.pre_ground = nil
 
 
 
@@ -622,54 +978,124 @@ callbacks.Register _l.draw, ->
             fn = _d.font.keys[_i.global_font_name_combo\GetValue! + 1]
             fs = _i.global_font_size_slider\GetValue!
             fw = _i.global_font_weight_slider\GetValue!
-        else
-            return
 
-        if not fn or not fs or not fw
-            return
+        if fn and fs and fw
+            font = _u.fnext(_f, fn, fs, fw)
+            if font
+                sc, sx, sy, ss, sb = nil, nil, nil, nil, nil
+                if _i.debug_shadow_check\GetValue!
+                    sc = {_i.debug_shadow_color\GetValue!}
+                    sx = _i.debug_shadow_offset_x_slider\GetValue!
+                    sy = _i.debug_shadow_offset_y_slider\GetValue!
+                    ss = _i.debug_shadow_saturation_slider\GetValue!
+                    sb = _i.debug_shadow_brightness_slider\GetValue!
+                elseif _i.global_shadow_check\GetValue!
+                    sc = {_i.global_shadow_color\GetValue!}
+                    sx = _i.global_shadow_offset_x_slider\GetValue!
+                    sy = _i.global_shadow_offset_y_slider\GetValue!
+                    ss = _i.global_shadow_saturation_slider\GetValue!
+                    sb = _i.global_shadow_brightness_slider\GetValue!
 
-        font = _u.fnext(_f, fn, fs, fw)
-        if not font
-            return
+                if sc and ss and sb
+                    do
+                        h, s, b, a = _u.rgb2hsb unpack sc
+                        sc = {_u.hsb2rgb h, s * ss, b * sb, a}
 
-        sc, sx, sy, ss, sb = nil, nil, nil, nil, nil
-        if _i.debug_shadow_check\GetValue!
-            sc = {_i.debug_shadow_color\GetValue!}
-            sx = _i.debug_shadow_offset_x_slider\GetValue!
-            sy = _i.debug_shadow_offset_y_slider\GetValue!
-            ss = _i.debug_shadow_saturation_slider\GetValue!
-            sb = _i.debug_shadow_brightness_slider\GetValue!
-        elseif _i.global_shadow_check\GetValue!
-            sc = {_i.global_shadow_color\GetValue!}
-            sx = _i.global_shadow_offset_x_slider\GetValue!
-            sy = _i.global_shadow_offset_y_slider\GetValue!
-            ss = _i.global_shadow_saturation_slider\GetValue!
-            sb = _i.global_shadow_brightness_slider\GetValue!
+                draw.SetFont font
 
-        if sc ~= nil and ss ~= nil and sb ~= nil
-            h, s, b, a = _u.rgb2hsb unpack sc
-            sc = {_u.hsb2rgb h, s * ss, b * sb, a}
+                dc = {_i.debug_color\GetValue!}
+                ds = _i.debug_saturation_slider\GetValue!
+                db = _i.debug_brightness_slider\GetValue!
+                if dc and ds and db
+                    do
+                        h, s, b, a = _u.rgb2hsb unpack dc
+                        dc = {_u.hsb2rgb h, s * ds, b * db, a}
 
-        draw.SetFont font
+                if _i.debug_spectators_check\GetValue!
+                    space_w, space_h = draw.GetTextSize ' '
+                    curr_x, curr_y = space_w, space_h
+                    for _, ent in ipairs _x.specs
+                        text = ent\GetName!
 
-        dc = {_i.debug_color\GetValue!}
-        ds = _i.debug_saturation_slider\GetValue!
-        db = _i.debug_brightness_slider\GetValue!
-        do
-            h, s, b, a = _u.rgb2hsb unpack dc
-            dc = {_u.hsb2rgb h, s * ds, b * db, a}
+                        if sc and sx and sy
+                            draw.Color unpack sc
+                            draw.Text curr_x + sx, curr_y + sy, text
 
-        if _i.debug_spectators_check\GetValue!
-            space_w, space_h = draw.GetTextSize ' '
-            curr_x, curr_y = space_w, space_h
-            for _, ent in ipairs _x.spectators
-                text = ent\GetName!
+                        draw.Color unpack dc
+                        draw.Text curr_x, curr_y, text
 
-                draw.Color unpack sc
-                draw.Text curr_x + sx, curr_y + sy, text
+                        text_w, text_h = draw.GetTextSize text
+                        curr_y += text_h + space_h
 
-                draw.Color unpack dc
-                draw.Text curr_x, curr_y, text
+                if _i.debug_jt_check\GetValue!
+                    space_w, space_h = draw.GetTextSize ' '
+                    text = _jt[_x.jt]
+                    text_w, text_h = draw.GetTextSize text
+                    text_x, text_y = _x.screen.w - text_w - space_w, space_h
 
+                    if sc and sx and sy
+                        draw.Color unpack sc
+                        draw.Text text_x + sx, text_y + sy, text
+
+                    draw.Color unpack dc
+                    draw.Text text_x, text_y, text
+
+    if _i.speed_check\GetValue! and (not _i.speed_hide_check\GetValue! or not _x.scope)
+        fn, fs, fw = nil, nil, nil
+        if _i.speed_font_check\GetValue!
+            fn = _d.font.keys[_i.speed_font_name_combo\GetValue! + 1]
+            fs = _i.speed_font_size_slider\GetValue!
+            fw = _i.speed_font_weight_slider\GetValue!
+        elseif _i.global_font_check\GetValue!
+            fn = _d.font.keys[_i.global_font_name_combo\GetValue! + 1]
+            fs = _i.global_font_size_slider\GetValue!
+            fw = _i.global_font_weight_slider\GetValue!
+
+        if fn and fs and fw
+            font = _u.fnext(_f, fn, fs, fw)
+            if font
+                sc, sx, sy, ss, sb = nil, nil, nil, nil, nil
+                if _i.speed_shadow_check\GetValue!
+                    sc = {_i.speed_shadow_color\GetValue!}
+                    sx = _i.speed_shadow_offset_x_slider\GetValue!
+                    sy = _i.speed_shadow_offset_y_slider\GetValue!
+                    ss = _i.speed_shadow_saturation_slider\GetValue!
+                    sb = _i.speed_shadow_brightness_slider\GetValue!
+                elseif _i.global_shadow_check\GetValue!
+                    sc = {_i.global_shadow_color\GetValue!}
+                    sx = _i.global_shadow_offset_x_slider\GetValue!
+                    sy = _i.global_shadow_offset_y_slider\GetValue!
+                    ss = _i.global_shadow_saturation_slider\GetValue!
+                    sb = _i.global_shadow_brightness_slider\GetValue!
+
+                if sc and ss and sb
+                    do
+                        h, s, b, a = _u.rgb2hsb unpack sc
+                        sc = {_u.hsb2rgb h, s * ss, b * sb, a}
+
+                draw.SetFont font
+
+                spc = {_i.speed_color\GetValue!}
+                sps = _i.speed_saturation_slider\GetValue!
+                spb = _i.speed_brightness_slider\GetValue!
+                if spc and sps and spb
+                    do
+                        h, s, b, a = _u.rgb2hsb unpack spc
+                        spc = {_u.hsb2rgb h, s * sps, b * spb, a}
+
+                x, y, z = nil, nil, nil
+                if _i.speed_ladder_check\GetValue! and _x.cladder > 0
+                    x, y, z = 0, 0, _x.cvel[3]
+                else
+                    x, y, z = _x.cvel[1], _x.cvel[2], 0
+
+                text = string.format '%.0f', _u.vlen3 x, y, z
                 text_w, text_h = draw.GetTextSize text
-                curr_y += text_h + space_h
+                text_x, text_y = (_x.screen.w - text_w) / 2, _x.screen.h * 0.6 - text_h / 2
+
+                if sc and sx and sy
+                    draw.Color unpack sc
+                    draw.Text text_x + sx, text_y + sy, text
+
+                draw.Color unpack spc
+                draw.Text text_x, text_y, text
