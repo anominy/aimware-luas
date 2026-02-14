@@ -720,5 +720,5 @@ _g.callbacks.Register(_call.fire_event, function(event)
     table.remove(_queue1, index)
     table.insert(_queue2, message)
 
-    _g.client.ChatSay(_queue1[math.random(#_queue1)])
+    _g.client.ChatSay(message)
 end)
