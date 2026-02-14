@@ -303,8 +303,7 @@ local _t =
 
 local _d =
     font:
-        keys: ['Consolas', 'AcPlus IBM BIOS']
-        vals: []
+        names: ['Consolas', 'AcPlus IBM BIOS']
 
         size:
             min: 1
@@ -317,6 +316,26 @@ local _d =
             max: 900
             step: 100
             default: 900
+
+    speed:
+        position:
+            x: 0.5
+            y: 0.4
+            min: 0
+            max: 1
+            step: 0.01
+
+        accuracy:
+            min: 0
+            max: 3
+            step: 1
+            default: 0
+
+        zeros:
+            min: 0
+            max: 3
+            step: 1
+            default: 0
 
     shadow:
         offset:
@@ -357,7 +376,7 @@ local _i =
         \parent _t.movement
         \name 'Global Font Name'
         \description 'Set the global font name used to render any text.'
-        \default _d.font.keys
+        \default _d.font.names
         \build!
 
     global_font_size_slider: _c.SliderBuilder!
@@ -499,7 +518,7 @@ local _i =
         \parent _t.movement
         \name 'Debug Font Name'
         \description 'Set the debug font name used to render debug text.'
-        \default _d.font.keys
+        \default _d.font.names
         \build!
 
     debug_font_size_slider: _c.SliderBuilder!
@@ -618,6 +637,66 @@ local _i =
         \step _d.color.brightness.step
         \build!
 
+    speed_x_check: _c.CheckBuilder!
+        \parent _t.movement
+        \name 'Speed By X-Axis'
+        \description 'Use player\'s x-axis speed for accumulating.'
+        \default true
+        \build!
+
+    speed_y_check: _c.CheckBuilder!
+        \parent _t.movement
+        \name 'Speed By Y-Axis'
+        \description 'Use player\'s y-axis speed for accumulating.'
+        \default true
+        \build!
+
+    speed_z_check: _c.CheckBuilder!
+        \parent _t.movement
+        \name 'Speed By Z-AXis'
+        \description 'Use player\'s z-axis speed for accumulating.'
+        \build!
+
+    speed_x_pos_slider: _c.SliderBuilder!
+        \parent _t.movement
+        \name 'Speed X-Axis Position'
+        \description 'Set player\'s speed position on the x-axis of the screen.'
+        \default _d.speed.position.x
+        \min _d.speed.position.min
+        \max _d.speed.position.max
+        \step _d.speed.position.step
+        \build!
+
+    speed_y_pos_slider: _c.SliderBuilder!
+        \parent _t.movement
+        \name 'Speed Y-Axis Position'
+        \description 'Set player\'s speed position on the y-axis of the screen.'
+        \default _d.speed.position.y
+        \min _d.speed.position.min
+        \max _d.speed.position.max
+        \step _d.speed.position.step
+        \build!
+
+    speed_acc_slider: _c.SliderBuilder!
+        \parent _t.movement
+        \name 'Speed Accuracy'
+        \description 'Set player\'s speed accuracy which represents the number of digits after the value dot.'
+        \default _d.speed.accuracy.default
+        \min _d.speed.accuracy.min
+        \max _d.speed.accuracy.max
+        \step _d.speed.accuracy.step
+        \build!
+
+    speed_zeros_slider: _c.SliderBuilder!
+        \parent _t.movement
+        \name 'Speed Zeros'
+        \description 'Set player\'s speed zeros wich represents the number of leading zeros of the values.'
+        \default _d.speed.zeros.default
+        \min _d.speed.zeros.min
+        \max _d.speed.zeros.max
+        \step _d.speed.zeros.step
+        \build!
+
     speed_font_check: _c.CheckBuilder!
         \parent _t.movement
         \name 'Speed Font'
@@ -628,7 +707,7 @@ local _i =
         \parent _t.movement
         \name 'Speed Font Name'
         \description 'Set the speed font name used to render speed text.'
-        \default _d.font.keys
+        \default _d.font.names
         \build!
 
     speed_font_size_slider: _c.SliderBuilder!
@@ -986,11 +1065,11 @@ callbacks.Register _l.draw, ->
     if _i.debug_check\GetValue!
         fn, fs, fw = nil, nil, nil
         if _i.debug_font_check\GetValue!
-            fn = _d.font.keys[_i.debug_font_name_combo\GetValue! + 1]
+            fn = _d.font.names[_i.debug_font_name_combo\GetValue! + 1]
             fs = _i.debug_font_size_slider\GetValue!
             fw = _i.debug_font_weight_slider\GetValue!
         elseif _i.global_font_check\GetValue!
-            fn = _d.font.keys[_i.global_font_name_combo\GetValue! + 1]
+            fn = _d.font.names[_i.global_font_name_combo\GetValue! + 1]
             fs = _i.global_font_size_slider\GetValue!
             fw = _i.global_font_weight_slider\GetValue!
 
@@ -1055,14 +1134,14 @@ callbacks.Register _l.draw, ->
                     draw.Color unpack dc
                     draw.Text text_x, text_y, text
 
-    if _i.speed_check\GetValue! and (not _i.speed_hide_check\GetValue! or not _x.scope)
+    if _i.speed_check\GetValue! and (not _i.speed_hide_check\GetValue! or not _x.scope) and _x.cvel
         fn, fs, fw = nil, nil, nil
         if _i.speed_font_check\GetValue!
-            fn = _d.font.keys[_i.speed_font_name_combo\GetValue! + 1]
+            fn = _d.font.names[_i.speed_font_name_combo\GetValue! + 1]
             fs = _i.speed_font_size_slider\GetValue!
             fw = _i.speed_font_weight_slider\GetValue!
         elseif _i.global_font_check\GetValue!
-            fn = _d.font.keys[_i.global_font_name_combo\GetValue! + 1]
+            fn = _d.font.names[_i.global_font_name_combo\GetValue! + 1]
             fs = _i.global_font_size_slider\GetValue!
             fw = _i.global_font_weight_slider\GetValue!
 
@@ -1099,14 +1178,25 @@ callbacks.Register _l.draw, ->
                         spc = {_u.hsb2rgb h, s * sps, b * spb, a}
 
                 x, y, z = nil, nil, nil
-                if _i.speed_ladder_check\GetValue! and _x.cladder > 0
+                if _i.speed_ladder_check\GetValue! and _x.cladder > 0 and _x.cground < 0 and _x.clag < 0
                     x, y, z = 0, 0, _x.cvel[3]
                 else
-                    x, y, z = _x.cvel[1], _x.cvel[2], 0
+                    x, y, z = _x.cvel[1], _x.cvel[2], _x.cvel[3]
+                    if not _i.speed_x_check\GetValue!
+                        x = 0
+                    if not _i.speed_y_check\GetValue!
+                        y = 0
+                    if not _i.speed_z_check\GetValue!
+                        z = 0
 
-                text = string.format '%.0f', _u.vlen3 x, y, z
+                accuracy = _i.speed_acc_slider\GetValue!
+                zeros = _i.speed_zeros_slider\GetValue!
+                if accuracy ~= 0
+                    zeros += accuracy + 1
+
+                text = string.format '%0' .. (tostring zeros) .. '.' .. (tostring accuracy) .. 'f', _u.vlen3 x, y, z
                 text_w, text_h = draw.GetTextSize text
-                text_x, text_y = (_x.screen.w - text_w) / 2, _x.screen.h * 0.6 - text_h / 2
+                text_x, text_y = _x.screen.w * _i.speed_x_pos_slider\GetValue! - text_w / 2, _x.screen.h * (1 - _i.speed_y_pos_slider\GetValue!) - text_h / 2
 
                 if sc and sx and sy
                     draw.Color unpack sc
